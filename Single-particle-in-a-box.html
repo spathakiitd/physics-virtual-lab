@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Particle in a Box Simulation</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for control panels */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        .slider-sm {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: #334155;
+            outline: none;
+        }
+        .slider-sm::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+        }
+        
+        /* Math display styling */
+        .math {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 h-screen overflow-hidden flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 p-3 shadow-md flex justify-between items-center z-10">
+        <div class="flex items-center space-x-3">
+            <svg class="w-6 h-6 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+            <h1 class="text-xl font-bold tracking-tight text-white">Quantum 1D Infinite Potential Well</h1>
+        </div>
+        <div class="flex space-x-3">
+            <button id="btnMeasure" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded shadow transition-colors">
+                Perform Measurement
+            </button>
+            <button id="btnExport" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded shadow transition-colors">
+                Export Image
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Panel: Controls -->
+        <aside class="w-80 bg-slate-900 border-r border-slate-800 p-4 overflow-y-auto flex flex-col gap-6">
+            
+            <!-- Global Physics Parameters -->
+            <div>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">System Parameters</h2>
+                
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm mb-1">
+                        <label>Box Length (<span class="math">L</span>)</label>
+                        <span id="valL" class="text-sky-400 font-mono">5.0</span>
+                    </div>
+                    <input type="range" id="sliderL" min="2" max="10" step="0.1" value="5" class="slider-sm">
+                </div>
+                
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm mb-1">
+                        <label>Particle Mass (<span class="math">m</span>)</label>
+                        <span id="valM" class="text-sky-400 font-mono">1.0</span>
+                    </div>
+                    <input type="range" id="sliderM" min="0.1" max="5" step="0.1" value="1" class="slider-sm">
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- Quantum State Configuration -->
+            <div>
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Quantum State</h2>
+                    <select id="modeSelect" class="bg-slate-800 text-xs border border-slate-700 rounded p-1 text-slate-300 outline-none">
+                        <option value="single">Single Eigenstate</option>
+                        <option value="superposition">Superposition</option>
+                    </select>
+                </div>
+
+                <!-- Single State Controls -->
+                <div id="singleControls">
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm mb-1">
+                            <label>Quantum Number (<span class="math">n</span>)</label>
+                            <span id="valN" class="text-sky-400 font-mono">1</span>
+                        </div>
+                        <input type="range" id="sliderN" min="1" max="10" step="1" value="1" class="slider-sm">
+                    </div>
+                </div>
+
+                <!-- Superposition Controls -->
+                <div id="superpositionControls" class="hidden">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs text-slate-400">Coefficients <span class="math">c_n</span></span>
+                        <button id="btnWavepacket" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">Gaussian Packet</button>
+                    </div>
+                    <div id="coeffContainer" class="space-y-3">
+                        <!-- Coefficients generated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- Visualization & Time Controls -->
+            <div>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Visualization & Time</h2>
+                
+                <!-- Visibility Toggles -->
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                        <input type="checkbox" id="toggleRe" checked class="form-checkbox text-blue-500 rounded bg-slate-800 border-slate-700">
+                        <span class="text-blue-400">Real Re(Ψ)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                        <input type="checkbox" id="toggleIm" checked class="form-checkbox text-red-500 rounded bg-slate-800 border-slate-700">
+                        <span class="text-red-400">Imag Im(Ψ)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm cursor-pointer col-span-2">
+                        <input type="checkbox" id="toggleProb" checked class="form-checkbox text-green-500 rounded bg-slate-800 border-slate-700">
+                        <span class="text-green-400">Prob Density |Ψ|²</span>
+                    </label>
+                </div>
+
+                <!-- Time Controls -->
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-sm">Time (<span class="math">t</span>): <span id="valTime" class="font-mono text-xs">0.00</span></span>
+                        <div class="space-x-1">
+                            <button id="btnPlay" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-xs">Pause</button>
+                            <button id="btnReset" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs">Reset</button>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <label class="text-slate-400">Animation Speed</label>
+                        <span id="valSpeed" class="text-slate-300">1.0x</span>
+                    </div>
+                    <input type="range" id="sliderSpeed" min="0" max="3" step="0.1" value="1" class="slider-sm">
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Center Panel: Canvas Visualization -->
+        <section class="flex-1 relative flex bg-[#020617]" id="canvasContainer">
+            <!-- Main Wavefunction Canvas -->
+            <canvas id="mainCanvas" class="w-full h-full block"></canvas>
+            
+            <!-- Side Energy Level Canvas -->
+            <canvas id="energyCanvas" class="absolute right-0 top-0 h-full w-24 border-l border-slate-800 bg-slate-900/50 backdrop-blur-sm pointer-events-none"></canvas>
+            
+            <!-- Custom Legend / Axis info overlay -->
+            <div class="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur border border-slate-800 p-2 rounded text-xs text-slate-400 pointer-events-none">
+                <span class="math">x = 0</span> to <span class="math">x = L</span>
+            </div>
+        </section>
+
+        <!-- Right Panel: Theory and Readouts -->
+        <aside class="w-80 bg-slate-900 border-l border-slate-800 p-4 overflow-y-auto flex flex-col gap-6">
+            
+            <!-- Real-time Observables -->
+            <div>
+                <h2 class="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-3">Measurements</h2>
+                <div class="bg-slate-950 rounded border border-slate-800 p-3 space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400" title="Expected Energy">Energy &langle;E&rangle;</span>
+                        <span id="outE" class="font-mono text-emerald-400">0.000</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400" title="Expected Position">Position &langle;x&rangle;</span>
+                        <span id="outX" class="font-mono text-emerald-400">0.000</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400" title="Total Probability (should be 1)">Normalization &int;|Ψ|²</span>
+                        <span id="outNorm" class="font-mono text-emerald-400">1.000</span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-slate-800" id="singleStateReadouts">
+                        <span class="text-slate-400">Wavelength λ</span>
+                        <span id="outLambda" class="font-mono text-sky-400">0.000</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theory Section -->
+            <div class="text-sm text-slate-300 space-y-4">
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-2">Physical Interpretation</h2>
+                
+                <div>
+                    <h3 class="font-semibold text-white mb-1">Boundary Conditions</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        The particle is trapped in an infinite well. The potential <span class="math">V(x) = ∞</span> outside <span class="math">[0, L]</span>, forcing <span class="math">Ψ(0) = Ψ(L) = 0</span>.
+                    </p>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-white mb-1">Energy Quantization</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed mb-2">
+                        Because the wave must fit exactly within the boundaries, only discrete wavelengths are allowed. Energy is quantized as:
+                    </p>
+                    <div class="math text-center text-xs py-2 bg-slate-950 rounded">
+                        E_n = (n²π²ℏ²) / (2mL²)
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-white mb-1">Time Evolution</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed mb-2">
+                        Each eigenstate accumulates a phase over time proportional to its energy: <span class="math">e^{-iE_nt/ℏ}</span>.
+                    </p>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        In a <strong>superposition</strong>, states with different energies rotate in the complex plane at different frequencies, causing dynamic interference in the probability density <span class="math">|Ψ|²</span>.
+                    </p>
+                </div>
+                
+                <div class="bg-purple-900/30 border border-purple-800/50 p-3 rounded-lg mt-4">
+                    <h3 class="font-semibold text-purple-300 mb-1 text-xs">Measurement (Collapse)</h3>
+                    <p class="text-[11px] text-purple-200/70 leading-relaxed">
+                        Clicking "Perform Measurement" collapses the superposition into a single eigenstate <span class="math">n</span> with probability proportional to <span class="math">|c_n|²</span>.
+                    </p>
+                </div>
+            </div>
+            
+        </aside>
+    </main>
+
+    <!-- Simulation Logic -->
+    <script>
+        // --- CONSTANTS & STATE ---
+        // Setting hbar = 1 for visualization scale
+        const HBAR = 1; 
+        const NUM_STATES = 15; // Max states for superposition
+        
+        const state = {
+            mode: 'single', // 'single' or 'superposition'
+            L: 5.0,
+            m: 1.0,
+            n: 1, // Active single state
+            coeffs: new Array(NUM_STATES).fill(0), // Superposition coefficients
+            time: 0,
+            speed: 1.0,
+            isPlaying: true,
+            showRe: true,
+            showIm: true,
+            showProb: true
+        };
+        
+        // Initialize ground state
+        state.coeffs[0] = 1.0;
+
+        // --- DOM ELEMENTS ---
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Optimize
+        const eCanvas = document.getElementById('energyCanvas');
+        const eCtx = eCanvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+        
+        // --- RESIZE HANDLING ---
+        function resizeCanvas() {
+            const rect = container.getBoundingClientRect();
+            // High DPI scaling for sharp lines
+            const dpr = window.devicePixelRatio || 1;
+            
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // Energy canvas is fixed 96px width in CSS (24 * 4)
+            eCanvas.width = 96 * dpr;
+            eCanvas.height = rect.height * dpr;
+            eCtx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- PHYSICS MATH ---
+        function calculateEnergy(n, m, L) {
+            // E_n = (n^2 * pi^2 * hbar^2) / (2 * m * L^2)
+            return (n * n * Math.PI * Math.PI) / (2 * m * L * L);
+        }
+
+        function getPsiAmplitude(n, L, x) {
+            if (x < 0 || x > L) return 0;
+            return Math.sqrt(2 / L) * Math.sin((n * Math.PI * x) / L);
+        }
+
+        // Normalize the superposition coefficients
+        function getNormalizedCoeffs() {
+            let normSq = 0;
+            for(let i=0; i<NUM_STATES; i++) {
+                normSq += state.coeffs[i] * state.coeffs[i];
+            }
+            if (normSq === 0) {
+                // Fallback to ground state if all zeroed out
+                let fallback = new Array(NUM_STATES).fill(0);
+                fallback[0] = 1;
+                return { normalized: fallback, sumSq: 1 };
+            }
+            return {
+                normalized: state.coeffs.map(c => c / Math.sqrt(normSq)),
+                sumSq: normSq
+            };
+        }
+
+        // Calculate expected energy
+        function getExpectedEnergy(normalizedCoeffs) {
+            if (state.mode === 'single') return calculateEnergy(state.n, state.m, state.L);
+            let E_exp = 0;
+            for(let i=0; i<NUM_STATES; i++) {
+                const P_n = normalizedCoeffs[i] * normalizedCoeffs[i];
+                if (P_n > 0) {
+                    E_exp += P_n * calculateEnergy(i+1, state.m, state.L);
+                }
+            }
+            return E_exp;
+        }
+
+        // Generate Gaussian wavepacket coefficients
+        function generateWavepacket() {
+            const x0 = state.L / 2;
+            const sigma = state.L / 10;
+            const k0 = 5; // Initial momentum
+            
+            // Numerical integration to find c_n = <psi_n | Psi_packet>
+            const dx = state.L / 1000;
+            let newCoeffs = new Array(NUM_STATES).fill(0);
+            
+            for(let n=1; n<=NUM_STATES; n++) {
+                let integralReal = 0;
+                // Ignoring imaginary part of integral for simplicity to keep coeffs real
+                // A true moving packet needs complex coeffs, but for standing wavepacket, real is fine.
+                // We'll just do a real gaussian centered at x0
+                for(let x=0; x<=state.L; x+=dx) {
+                    // Gaussian env
+                    let psi_gauss = Math.exp(-Math.pow(x - x0, 2) / (2 * sigma * sigma));
+                    let psi_n = getPsiAmplitude(n, state.L, x);
+                    integralReal += psi_gauss * psi_n * dx;
+                }
+                newCoeffs[n-1] = integralReal;
+            }
+            
+            // Apply to state
+            state.coeffs = newCoeffs;
+            updateCoeffInputs();
+            updateReadouts();
+        }
+
+        // Measurement Simulator
+        function performMeasurement() {
+            if (state.mode === 'single') return; // Already collapsed
+            
+            const { normalized } = getNormalizedCoeffs();
+            const rand = Math.random();
+            let cumulative = 0;
+            let collapsedState = 1;
+            
+            for(let i=0; i<NUM_STATES; i++) {
+                const prob = normalized[i] * normalized[i];
+                cumulative += prob;
+                if (rand <= cumulative) {
+                    collapsedState = i + 1;
+                    break;
+                }
+            }
+            
+            // Apply collapse
+            state.coeffs = new Array(NUM_STATES).fill(0);
+            state.coeffs[collapsedState - 1] = 1.0;
+            updateCoeffInputs();
+            updateReadouts();
+            
+            // Visual feedback
+            document.getElementById('canvasContainer').classList.add('bg-purple-900');
+            setTimeout(() => {
+                document.getElementById('canvasContainer').classList.remove('bg-purple-900');
+                document.getElementById('canvasContainer').classList.add('transition-colors', 'duration-700', 'bg-[#020617]');
+            }, 100);
+        }
+
+        // --- RENDERING ENGINE ---
+        function render() {
+            const rect = container.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+            const eWidth = 96;
+
+            // 1. Clear background
+            ctx.fillStyle = '#020617'; // slate-950
+            ctx.fillRect(0, 0, width, height);
+            eCtx.clearRect(0, 0, eWidth, height);
+
+            // 2. Coordinate System
+            // X-axis mapping: padding 10% on left, leave space for energy on right
+            const paddingX = width * 0.1;
+            const plotWidth = width * 0.75;
+            
+            const toScreenX = (x) => paddingX + (x / 10) * plotWidth; // 10 is max L
+            const toScreenY = (y) => height / 2 - (y * height / 4); // Scale amp
+
+            // Draw Box Walls
+            const screenX0 = toScreenX(0);
+            const screenXL = toScreenX(state.L);
+            
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.05)';
+            ctx.fillRect(0, 0, screenX0, height); // Left forbidden
+            ctx.fillRect(screenXL, 0, width - screenXL, height); // Right forbidden
+            
+            ctx.strokeStyle = '#64748b'; // slate-500
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(screenX0, 0); ctx.lineTo(screenX0, height);
+            ctx.moveTo(screenXL, 0); ctx.lineTo(screenXL, height);
+            ctx.stroke();
+
+            // Zero axis
+            ctx.strokeStyle = '#334155'; // slate-700
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, toScreenY(0)); ctx.lineTo(width, toScreenY(0));
+            ctx.stroke();
+
+            // 3. Calculate Wavefunction Array
+            const numPoints = 500;
+            const dx = state.L / numPoints;
+            const { normalized } = getNormalizedCoeffs();
+            
+            let points = [];
+            let expX_num = 0;
+            let norm_check = 0;
+
+            for (let i = 0; i <= numPoints; i++) {
+                let x = i * dx;
+                let re = 0, im = 0, prob = 0;
+
+                if (state.mode === 'single') {
+                    const E = calculateEnergy(state.n, state.m, state.L);
+                    const amp = getPsiAmplitude(state.n, state.L, x);
+                    re = amp * Math.cos(-E * state.time);
+                    im = amp * Math.sin(-E * state.time);
+                } else {
+                    for (let k = 0; k < NUM_STATES; k++) {
+                        const cn = normalized[k];
+                        if (cn === 0) continue;
+                        const E = calculateEnergy(k + 1, state.m, state.L);
+                        const amp = cn * getPsiAmplitude(k + 1, state.L, x);
+                        re += amp * Math.cos(-E * state.time);
+                        im += amp * Math.sin(-E * state.time);
+                    }
+                }
+                
+                prob = re * re + im * im;
+                points.push({ x, re, im, prob });
+
+                // Integration for observables (Trapezoidal approx simplified)
+                expX_num += x * prob * dx;
+                norm_check += prob * dx;
+            }
+            
+            // Normalization correction for UI
+            if (norm_check > 0) expX_num /= norm_check;
+
+            // Update fast readouts (Position) - throttle DOM updates slightly if needed, but modern browsers are fast
+            document.getElementById('outX').innerText = expX_num.toFixed(3);
+            document.getElementById('outNorm').innerText = norm_check.toFixed(3);
+
+            // 4. Draw Curves
+            const drawCurve = (valFn, color, width, isFill = false) => {
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = width;
+                
+                for (let i = 0; i < points.length; i++) {
+                    const p = points[i];
+                    const sx = toScreenX(p.x);
+                    const sy = toScreenY(valFn(p));
+                    if (i === 0) ctx.moveTo(sx, sy);
+                    else ctx.lineTo(sx, sy);
+                }
+
+                if (isFill) {
+                    ctx.lineTo(toScreenX(state.L), toScreenY(0));
+                    ctx.lineTo(toScreenX(0), toScreenY(0));
+                    ctx.fillStyle = color.replace('1)', '0.2)'); // add transparency
+                    ctx.fill();
+                } else {
+                    ctx.stroke();
+                }
+            };
+
+            if (state.showProb) drawCurve(p => p.prob, 'rgba(34, 197, 94, 1)', 3, true); // Green Fill
+            if (state.showRe) drawCurve(p => p.re, 'rgba(56, 189, 248, 1)', 2); // Blue Real
+            if (state.showIm) drawCurve(p => p.im, 'rgba(239, 68, 68, 1)', 2); // Red Imag
+
+            // Draw Expectation Value <x> marker
+            if (norm_check > 0.01) {
+                const exScreen = toScreenX(expX_num);
+                ctx.beginPath();
+                ctx.arc(exScreen, toScreenY(0), 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#22c55e'; // green
+                ctx.fill();
+            }
+
+            // 5. Draw Energy Spectrum
+            const maxVisibleEnergy = calculateEnergy(5, 0.1, 2); // static visual scale baseline
+            const eToScreenY = (e) => height - 30 - (e / maxVisibleEnergy) * (height - 60);
+
+            eCtx.fillStyle = '#94a3b8';
+            eCtx.font = '10px sans-serif';
+            eCtx.textAlign = 'center';
+            eCtx.fillText('Energy', eWidth/2, 15);
+
+            for (let i = 1; i <= (state.mode === 'single' ? Math.max(state.n+1, 5) : 8); i++) {
+                const E = calculateEnergy(i, state.m, state.L);
+                const y = eToScreenY(E);
+                
+                let opacity = 0.2;
+                let isActive = false;
+                
+                if (state.mode === 'single') {
+                    if (i === state.n) { opacity = 1.0; isActive = true; }
+                } else {
+                    if (i <= NUM_STATES) {
+                        const prob = normalized[i-1] * normalized[i-1];
+                        if (prob > 0.001) {
+                            opacity = 0.3 + prob * 0.7;
+                            isActive = true;
+                        }
+                    }
+                }
+
+                eCtx.beginPath();
+                eCtx.strokeStyle = `rgba(168, 85, 247, ${opacity})`; // Purple
+                eCtx.lineWidth = isActive ? 2 : 1;
+                eCtx.moveTo(10, y);
+                eCtx.lineTo(eWidth - 10, y);
+                eCtx.stroke();
+
+                if (isActive || i<=3) {
+                    eCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                    eCtx.textAlign = 'left';
+                    eCtx.fillText(`E${i}`, eWidth - 25, y - 4);
+                }
+            }
+        }
+
+        // --- ANIMATION LOOP ---
+        let lastTimestamp = 0;
+        function animate(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const delta = (timestamp - lastTimestamp) / 1000; // seconds
+            lastTimestamp = timestamp;
+
+            if (state.isPlaying) {
+                // Scale time artificially to keep visualization readable
+                // Because E can be very large, resulting in crazy oscillations
+                state.time += delta * state.speed * 0.5; 
+                document.getElementById('valTime').innerText = state.time.toFixed(2);
+            }
+
+            render();
+            requestAnimationFrame(animate);
+        }
+
+        // --- UI CONTROLLERS ---
+        function updateReadouts() {
+            // Update UI numerical values
+            document.getElementById('valL').innerText = state.L.toFixed(1);
+            document.getElementById('valM').innerText = state.m.toFixed(1);
+            
+            const { normalized } = getNormalizedCoeffs();
+            const expE = getExpectedEnergy(normalized);
+            document.getElementById('outE').innerText = expE.toFixed(3);
+            
+            if (state.mode === 'single') {
+                document.getElementById('singleStateReadouts').classList.remove('hidden');
+                document.getElementById('valN').innerText = state.n;
+                const lambda = (2 * state.L) / state.n;
+                document.getElementById('outLambda').innerText = lambda.toFixed(3);
+            } else {
+                document.getElementById('singleStateReadouts').classList.add('hidden');
+            }
+        }
+
+        function createSuperpositionUI() {
+            const container = document.getElementById('coeffContainer');
+            container.innerHTML = '';
+            // Only show first 5 states in UI for brevity, but physics engine handles NUM_STATES
+            for (let i = 0; i < 5; i++) {
+                const n = i + 1;
+                const div = document.createElement('div');
+                div.className = 'flex items-center space-x-2';
+                div.innerHTML = `
+                    <span class="text-xs font-mono text-slate-400 w-4">c${n}</span>
+                    <input type="range" min="-1" max="1" step="0.05" value="${state.coeffs[i]}" class="slider-sm flex-1" id="sliderC${n}">
+                    <span class="text-xs text-purple-400 w-8 text-right font-mono" id="valC${n}">${state.coeffs[i].toFixed(2)}</span>
+                `;
+                container.appendChild(div);
+
+                document.getElementById(`sliderC${n}`).addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    state.coeffs[i] = val;
+                    document.getElementById(`valC${n}`).innerText = val.toFixed(2);
+                    updateReadouts();
+                });
+            }
+        }
+
+        function updateCoeffInputs() {
+            if (state.mode !== 'superposition') return;
+            for (let i = 0; i < 5; i++) {
+                const el = document.getElementById(`sliderC${i+1}`);
+                if (el) {
+                    el.value = state.coeffs[i];
+                    document.getElementById(`valC${i+1}`).innerText = state.coeffs[i].toFixed(2);
+                }
+            }
+        }
+
+        function setupEventListeners() {
+            // Mode Switch
+            document.getElementById('modeSelect').addEventListener('change', (e) => {
+                state.mode = e.target.value;
+                if (state.mode === 'single') {
+                    document.getElementById('singleControls').classList.remove('hidden');
+                    document.getElementById('superpositionControls').classList.add('hidden');
+                } else {
+                    document.getElementById('singleControls').classList.add('hidden');
+                    document.getElementById('superpositionControls').classList.remove('hidden');
+                }
+                updateReadouts();
+            });
+
+            // Params
+            document.getElementById('sliderL').addEventListener('input', (e) => { state.L = parseFloat(e.target.value); updateReadouts(); });
+            document.getElementById('sliderM').addEventListener('input', (e) => { state.m = parseFloat(e.target.value); updateReadouts(); });
+            document.getElementById('sliderN').addEventListener('input', (e) => { state.n = parseInt(e.target.value); updateReadouts(); });
+            
+            // Time & Speed
+            const btnPlay = document.getElementById('btnPlay');
+            btnPlay.addEventListener('click', () => {
+                state.isPlaying = !state.isPlaying;
+                btnPlay.innerText = state.isPlaying ? 'Pause' : 'Play';
+                btnPlay.className = state.isPlaying ? 
+                    'bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-xs' : 
+                    'bg-rose-600 hover:bg-rose-500 text-white px-2 py-1 rounded text-xs';
+            });
+            document.getElementById('btnReset').addEventListener('click', () => { state.time = 0; });
+            document.getElementById('sliderSpeed').addEventListener('input', (e) => { 
+                state.speed = parseFloat(e.target.value); 
+                document.getElementById('valSpeed').innerText = state.speed.toFixed(1) + 'x';
+            });
+
+            // Toggles
+            document.getElementById('toggleRe').addEventListener('change', (e) => state.showRe = e.target.checked);
+            document.getElementById('toggleIm').addEventListener('change', (e) => state.showIm = e.target.checked);
+            document.getElementById('toggleProb').addEventListener('change', (e) => state.showProb = e.target.checked);
+
+            // Advanced Features
+            document.getElementById('btnWavepacket').addEventListener('click', generateWavepacket);
+            document.getElementById('btnMeasure').addEventListener('click', performMeasurement);
+            
+            // Image Export
+            document.getElementById('btnExport').addEventListener('click', () => {
+                const link = document.createElement('a');
+                link.download = 'ParticleInABox.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        // --- INITIALIZATION ---
+        createSuperpositionUI();
+        setupEventListeners();
+        updateReadouts();
+        requestAnimationFrame(animate);
+
+    </script>
+</body>
+</html>
