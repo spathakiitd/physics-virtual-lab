@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuantumLab | Interactive Physics Simulations</title>
+    <title>SPInsLab | Interactive Physics Simulations</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -136,7 +136,7 @@
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center cursor-pointer" onclick="navigate('home')">
                     <i data-lucide="atom" class="text-sci-accent w-8 h-8 mr-2"></i>
-                    <span class="font-bold text-xl tracking-tight text-white">Quantum<span class="text-sci-accent">Lab</span></span>
+                    <span class="font-bold text-xl tracking-tight text-white">SPIns<span class="text-sci-accent">Lab</span></span>
                 </div>
                 <div class="hidden md:block">
                     <div class="ml-10 flex items-baseline space-x-4">
@@ -146,11 +146,13 @@
                                 Modules <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
                             </button>
                             <!-- Dropdown -->
-                            <div class="absolute left-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-slate-800 ring-1 ring-black ring-opacity-5 hidden group-hover:block border border-slate-700">
+                            <div class="absolute left-0 mt-2 w-72 rounded-md shadow-lg py-1 bg-slate-800 ring-1 ring-black ring-opacity-5 hidden group-hover:block border border-slate-700">
                                 <a href="#subject/quantum" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Quantum Mechanics</a>
                                 <a href="#subject/electromagnetism" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Electromagnetism</a>
                                 <a href="#subject/mechanics" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Classical Mechanics</a>
                                 <a href="#subject/thermo" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Thermodynamics</a>
+                                <a href="#subject/engineering" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Engineering Physics Laboratory</a>
+                                <a href="#subject/fun-ai" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Fun Activities with AI</a>
                             </div>
                         </div>
                         <button onclick="navigate('about')" class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">About</button>
@@ -176,7 +178,7 @@
     <!-- Footer -->
     <footer class="border-t border-slate-800 bg-sci-panel py-8 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
-            <div>&copy; 2026 QuantumLab Virtual Research Environment.</div>
+            <div>&copy; 2026 SPInsLab Virtual Research Environment.</div>
             <div class="flex space-x-4 mt-4 md:mt-0">
                 <a href="#" class="hover:text-sci-accent transition-colors">Documentation</a>
                 <a href="#" class="hover:text-sci-accent transition-colors">Source</a>
@@ -356,7 +358,9 @@
             'quantum': { title: 'Quantum Mechanics', icon: 'atom', color: 'text-purple-400', desc: 'Wave functions, probability, tunneling, and quantization.' },
             'electromagnetism': { title: 'Electromagnetic Theory', icon: 'zap', color: 'text-yellow-400', desc: 'Statics, dynamics, and Maxwell\'s equations.' },
             'mechanics': { title: 'Classical Mechanics', icon: 'settings', color: 'text-orange-400', desc: 'Kinematics, dynamics, and orbital motion.' },
-            'thermo': { title: 'Thermodynamics & Modern', icon: 'thermometer', color: 'text-red-400', desc: 'Statistical mechanics, heat engines, and relativity.' }
+            'thermo': { title: 'Thermodynamics & Modern', icon: 'thermometer', color: 'text-red-400', desc: 'Statistical mechanics, heat engines, and relativity.' },
+            'engineering': { title: 'Engineering Physics Laboratory', icon: 'cpu', color: 'text-blue-400', desc: 'Applied physics, solid state devices, materials science, and optics.' },
+            'fun-ai': { title: 'Fun Activities with AI', icon: 'bot', color: 'text-emerald-400', desc: 'Interactive AI-driven physics simulations, games, and machine learning models.' }
         };
 
         class Simulation {
