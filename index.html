@@ -221,27 +221,13 @@
         // This architecture allows infinite extensibility without modifying core logic.
         const Registry = {
             'external-html-sim': {
-                id: 'external-html-sim',
-                subjectId: 'quantum',
-                category: 'Custom Extensions',
-                title: 'External HTML Simulator',
-                difficulty: 'Intermediate',
-                description: 'Demonstration of loading a separate, standalone HTML file as a simulation within the Virtual Lab architecture.',
-                objectives: [
-                    "Embed external HTML files seamlessly.",
-                    "Demonstrate extensibility via iframe engine."
-                ],
-                params: [
-                    { id: 'note', name: 'Note', type: 'select', options: [{val: 1, label: 'Controls are inside the HTML file'}], default: 1 }
-                ],
-                equations: `
-                    **External File Loading**
-                    This module loads a separate file (\`external-sim.html\`) inside an iframe sandbox.
-                `,
-                engine: 'iframe',
-                // Replace this URL with the path to your external HTML file when hosting on GitHub
-                url: 'https://phet.colorado.edu/sims/html/states-of-matter/latest/states-of-matter_all.html', 
-                ClassRef: 'IframeSim'
+                id: "single-particle-box-custom",
+                category: "Quantum Mechanics",
+                title: "Single Particle in a Box",
+                difficulty: "Intermediate",
+                description: "Explore the wave functions and energy levels of a single particle confined in a 1D potential well.",
+                type: "iframe", 
+                url: "./Single-particle-in-a-box.html" 
             },
             'quantum-tunneling': {
                 id: 'quantum-tunneling',
