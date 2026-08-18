@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Tunneling & Resonance Simulator</title>
+    <style>
+        :root {
+            --bg-base: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-canvas: #0b1121;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #60a5fa;
+            --border: #334155;
+            
+            --color-real: #60a5fa; /* Blue */
+            --color-imag: #f43f5e; /* Red */
+            --color-prob: #34d399; /* Green */
+            --color-barrier: #475569;
+            --color-energy: #fbbf24;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Layout */
+        .sidebar {
+            width: 320px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            flex: 2;
+            background-color: var(--bg-canvas);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .canvas-header {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            z-index: 10;
+        }
+
+        .bottom-panel {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+            min-height: 250px;
+        }
+
+        .plot-container {
+            flex: 1;
+            background-color: var(--bg-canvas);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .theory-container {
+            flex: 1;
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Controls */
+        h1 { font-size: 1.2rem; margin-bottom: 5px; color: var(--accent); }
+        h2 { font-size: 1rem; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+        h3 { font-size: 1rem; color: var(--accent); margin-bottom: 10px; margin-top: 10px; }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .slider-row {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+
+        .slider-val {
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .toggles {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .toggle-row input {
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 8px 0;
+            background-color: var(--border);
+            color: var(--text-main);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover { background-color: var(--accent); }
+        button.active { background-color: var(--accent); }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            background: var(--bg-base);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+        }
+        
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); }
+        .stat-value { font-size: 1.1rem; font-weight: bold; }
+        .stat-value.t-val { color: var(--color-prob); }
+        .stat-value.r-val { color: var(--color-imag); }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Math and Theory text */
+        .theory-container p { margin-bottom: 10px; color: var(--text-muted); }
+        .theory-container ul { margin-left: 20px; margin-bottom: 10px; color: var(--text-muted); }
+        code { background: var(--bg-base); padding: 2px 4px; border-radius: 4px; font-family: monospace; color: var(--text-main); }
+        .math-block { background: var(--bg-base); padding: 10px; text-align: center; border-radius: 4px; margin: 10px 0; font-style: italic;}
+
+        /* Legends */
+        .legend {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Controls -->
+    <div class="sidebar">
+        <div>
+            <h1>Quantum Tunneling</h1>
+            <p style="font-size:0.8rem; color:var(--text-muted)">1D Schrödinger Equation Solver</p>
+        </div>
+
+        <div class="control-group">
+            <h2>System Parameters</h2>
+            
+            <div class="slider-row">
+                <div class="slider-header">
+                    <label>Particle Energy (E)</label>
+                    <span class="slider-val" id="val-E">5.00 eV</span>
+                </div>
+                <input type="range" id="slider-E" min="0.1" max="15.0" step="0.1" value="5.0">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <label>Barrier Height (V₀)</label>
+                    <span class="slider-val" id="val-V">8.00 eV</span>
+                </div>
+                <input type="range" id="slider-V" min="0.1" max="15.0" step="0.1" value="8.0">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <label>Barrier Width (a)</label>
+                    <span class="slider-val" id="val-a">0.50 nm</span>
+                </div>
+                <input type="range" id="slider-a" min="0.1" max="3.0" step="0.05" value="0.5">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <label>Barrier Gap (w)</label>
+                    <span class="slider-val" id="val-w">1.00 nm</span>
+                </div>
+                <input type="range" id="slider-w" min="0.1" max="5.0" step="0.1" value="1.0">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <label>Number of Barriers (N)</label>
+                    <span class="slider-val" id="val-N">1</span>
+                </div>
+                <input type="range" id="slider-N" min="1" max="5" step="1" value="1">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <label>Particle Mass (m)</label>
+                    <span class="slider-val" id="val-m">1.0 mₑ</span>
+                </div>
+                <input type="range" id="slider-m" min="0.1" max="5.0" step="0.1" value="1.0">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h2>Visualization Options</h2>
+            <div class="toggles">
+                <label class="toggle-row">
+                    <input type="checkbox" id="check-real" checked> Show Real Part Re(ψ)
+                </label>
+                <label class="toggle-row">
+                    <input type="checkbox" id="check-imag"> Show Imaginary Part Im(ψ)
+                </label>
+                <label class="toggle-row">
+                    <input type="checkbox" id="check-prob" checked> Show Probability Density |ψ|²
+                </label>
+            </div>
+
+            <div class="btn-group">
+                <button id="btn-play">Pause Time</button>
+                <button id="btn-reset">Reset Params</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        
+        <!-- Main Wavefunction Plot -->
+        <div class="canvas-container">
+            <div class="canvas-header">Wavefunction ψ(x) & Potential Profile V(x)</div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color" style="background:var(--color-energy)"></div>Energy (E)</div>
+                <div class="legend-item"><div class="legend-color" style="background:var(--color-barrier)"></div>Potential (V)</div>
+                <div class="legend-item"><div class="legend-color" style="background:var(--color-real)"></div>Re(ψ)</div>
+                <div class="legend-item"><div class="legend-color" style="background:var(--color-prob); opacity:0.5"></div>|ψ|²</div>
+            </div>
+            <canvas id="canvas-main"></canvas>
+        </div>
+
+        <!-- Bottom Panel -->
+        <div class="bottom-panel">
+            
+            <!-- Transmission Plot -->
+            <div class="plot-container">
+                <div class="canvas-header">Transmission vs. Energy (Resonance Scan)</div>
+                <canvas id="canvas-plot"></canvas>
+            </div>
+
+            <!-- Theory and Stats -->
+            <div class="theory-container">
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">Transmission (T)</span>
+                        <span class="stat-value t-val" id="stat-T">0.0000</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Reflection (R)</span>
+                        <span class="stat-value r-val" id="stat-R">1.0000</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Incident Wave Number (k)</span>
+                        <span class="stat-value" id="stat-k">0.00</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Decay Constant (κ)</span>
+                        <span class="stat-value" id="stat-kappa">0.00</span>
+                    </div>
+                </div>
+
+                <h3>Quantum Theory</h3>
+                <p><strong>Quantum Tunneling</strong> allows particles to pass through a potential barrier even when their kinetic energy <code>E</code> is less than the barrier height <code>V₀</code>, a phenomenon impossible in classical physics.</p>
+                <p>The time-independent Schrödinger Equation:</p>
+                <div class="math-block">
+                    - (ℏ²/2m) (d²ψ/dx²) + V(x)ψ = Eψ
+                </div>
+                <p>Inside the barrier (E < V₀), the wavefunction does not drop to zero immediately but decays exponentially: <code>ψ(x) ~ e<sup>-κx</sup></code>, where <code>κ = √(2m(V₀-E))/ℏ</code>.</p>
+                <p><strong>Transfer Matrix Method (TMM):</strong> For multiple barriers, the wavefunction is modeled piecewise across regions. By enforcing continuity of <code>ψ</code> and <code>dψ/dx</code> at every boundary, we construct a propagation matrix to compute the global Transmission (T) and Reflection (R) coefficients.</p>
+                <p><strong>Resonant Tunneling:</strong> In multi-barrier systems, quantum interference between reflected waves creates discrete energy levels where transmission jumps to 100% (T=1), appearing as sharp peaks in the Energy Scan.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Complex Number Utility Class
+         */
+        class Complex {
+            constructor(re, im = 0) {
+                this.re = re;
+                this.im = im;
+            }
+            add(c) { return new Complex(this.re + c.re, this.im + c.im); }
+            sub(c) { return new Complex(this.re - c.re, this.im - c.im); }
+            mul(c) { return new Complex(this.re * c.re - this.im * c.im, this.re * c.im + this.im * c.re); }
+            div(c) {
+                let den = c.re * c.re + c.im * c.im;
+                return new Complex((this.re * c.re + this.im * c.im) / den, (this.im * c.re - this.re * c.im) / den);
+            }
+            scale(s) { return new Complex(this.re * s, this.im * s); }
+            magSq() { return this.re * this.re + this.im * this.im; }
+            mag() { return Math.sqrt(this.magSq()); }
+            exp() {
+                let e = Math.exp(this.re);
+                return new Complex(e * Math.cos(this.im), e * Math.sin(this.im));
+            }
+        }
+        const C = (re, im = 0) => new Complex(re, im);
+
+        /**
+         * Simulation State & Physics Engine
+         */
+        const State = {
+            E: 5.0,
+            V0: 8.0,
+            a: 0.5,
+            w: 1.0,
+            N: 1,
+            m: 1.0,
+            showReal: true,
+            showImag: false,
+            showProb: true,
+            isPlaying: true,
+            time: 0,
+            // Physics Results
+            tmmData: null,
+            scanData: [], // Array of {E, T}
+        };
+
+        // Transfer Matrix Method to solve piece-wise constant potentials
+        function solveTMM(E, m, V_arr, d_arr) {
+            const N = V_arr.length;
+            const c_mass = 2 * m; // assuming hbar = 1
+            
+            let k = [];
+            let V_full = [0, ...V_arr, 0];
+            
+            // Calculate wave vectors k for each region
+            for (let j = 0; j <= N + 1; j++) {
+                let Vj = V_full[j];
+                let E_adj = E;
+                if (Math.abs(E - Vj) < 1e-6) E_adj = Vj + 1e-6; // avoid division by zero
+                
+                if (E_adj > Vj) {
+                    k.push(C(Math.sqrt(c_mass * (E_adj - Vj)), 0));
+                } else {
+                    k.push(C(0, Math.sqrt(c_mass * (Vj - E_adj))));
+                }
+            }
+            
+            let A = new Array(N + 2);
+            let B = new Array(N + 2);
+            
+            // Assume transmitted wave has amplitude 1, no reflected wave from infinity
+            A[N + 1] = C(1, 0);
+            B[N + 1] = C(0, 0);
+            
+            // Propagate backwards from right to left
+            for (let j = N; j >= 0; j--) {
+                let dj = (j === 0) ? 0 : d_arr[j - 1]; 
+                let kj = k[j];
+                let kjp1 = k[j + 1];
+                
+                // Propagation factor Ej = exp(i * kj * dj)
+                // kj = re + i * im. i * kj * dj = (-im + i * re) * dj
+                let phase = C(-kj.im * dj, kj.re * dj);
+                let Ej = phase.exp();
+                let Ej_inv = C(Ej.re, -Ej.im).scale(1 / (Ej.magSq() || 1e-30));
+                
+                let ratio = kjp1.div(kj);
+                let term1 = C(1, 0).add(ratio);
+                let term2 = C(1, 0).sub(ratio);
+                
+                let valA = term1.mul(A[j + 1]).add(term2.mul(B[j + 1]));
+                A[j] = valA.mul(Ej_inv).scale(0.5);
+                
+                let valB = term2.mul(A[j + 1]).add(term1.mul(B[j + 1]));
+                B[j] = valB.mul(Ej).scale(0.5);
+            }
+            
+            let A0 = A[0];
+            let A0_magSq = A0.magSq();
+            
+            // Transmission & Reflection coefficients
+            // Since outer regions have V=0, k is real and k_0 = k_{N+1}
+            let T = 1.0 / A0_magSq;
+            let R = B[0].magSq() / A0_magSq;
+            
+            // Normalize so incident amplitude A0 = 1
+            for (let j = 0; j <= N + 1; j++) {
+                A[j] = A[j].div(A0);
+                B[j] = B[j].div(A0);
+            }
+            
+            return { A, B, k, T, R, V_full, d_arr };
+        }
+
+        function updatePhysics() {
+            // Build geometry
+            let V_arr = [];
+            let d_arr = [];
+            for(let i = 0; i < State.N; i++) {
+                V_arr.push(State.V0);
+                d_arr.push(State.a);
+                if (i < State.N - 1) {
+                    V_arr.push(0); // Gap
+                    d_arr.push(State.w);
+                }
+            }
+            
+            State.tmmData = solveTMM(State.E, State.m, V_arr, d_arr);
+            
+            // Update UI Stats
+            document.getElementById('stat-T').innerText = State.tmmData.T.toFixed(4);
+            document.getElementById('stat-R').innerText = State.tmmData.R.toFixed(4);
+            
+            let k_val = Math.sqrt(2 * State.m * State.E);
+            document.getElementById('stat-k').innerText = k_val.toFixed(2);
+            
+            let kappa = State.V0 > State.E ? Math.sqrt(2 * State.m * (State.V0 - State.E)) : 0;
+            document.getElementById('stat-kappa').innerText = State.V0 > State.E ? kappa.toFixed(2) : '0 (Propagating)';
+        }
+
+        function generateScanData() {
+            // Sweep E from 0.1 to max(15, V0*1.5) to find resonances
+            State.scanData = [];
+            let eMax = Math.max(15.0, State.V0 * 1.5);
+            let steps = 300;
+            
+            let V_arr = [];
+            let d_arr = [];
+            for(let i = 0; i < State.N; i++) {
+                V_arr.push(State.V0);
+                d_arr.push(State.a);
+                if (i < State.N - 1) {
+                    V_arr.push(0);
+                    d_arr.push(State.w);
+                }
+            }
+
+            for (let i = 0; i <= steps; i++) {
+                let E_test = 0.1 + (eMax - 0.1) * (i / steps);
+                let data = solveTMM(E_test, State.m, V_arr, d_arr);
+                State.scanData.push({ E: E_test, T: data.T });
+            }
+        }
+
+        function evaluateWave(x, t, tmm) {
+            let { A, B, k, V_full, d_arr } = tmm;
+            let N_regions = d_arr.length;
+            
+            let j = 0;
+            let local_x = x;
+            let current_x = 0;
+            
+            // Determine region
+            if (x < 0) {
+                j = 0;
+                local_x = x;
+            } else {
+                j = 1;
+                let found = false;
+                for (let i = 0; i < N_regions; i++) {
+                    if (x >= current_x && x < current_x + d_arr[i]) {
+                        j = i + 1;
+                        local_x = x - current_x;
+                        found = true;
+                        break;
+                    }
+                    current_x += d_arr[i];
+                }
+                if (!found) {
+                    j = N_regions + 1;
+                    local_x = x - current_x;
+                }
+            }
+            
+            let kj = k[j];
+            let phase_A = C(-kj.im * local_x, kj.re * local_x);
+            let phase_B = C(kj.im * local_x, -kj.re * local_x);
+            
+            let val_A = A[j].mul(phase_A.exp());
+            let val_B = B[j].mul(phase_B.exp());
+            let psi = val_A.add(val_B);
+            
+            // Time evolution: Psi(x,t) = psi(x) * exp(-i * E * t)
+            // Using E as angular frequency for visual purposes
+            let time_phase = C(0, -State.E * t).exp();
+            let Psi_t = psi.mul(time_phase);
+            
+            return {
+                real: Psi_t.re,
+                imag: Psi_t.im,
+                prob: psi.magSq(),
+                V: V_full[j]
+            };
+        }
+
+        /**
+         * Canvas Rendering
+         */
+        const canvasMain = document.getElementById('canvas-main');
+        const ctxMain = canvasMain.getContext('2d');
+        const canvasPlot = document.getElementById('canvas-plot');
+        const ctxPlot = canvasPlot.getContext('2d');
+
+        function resizeCanvas() {
+            let p1 = canvasMain.parentElement;
+            canvasMain.width = p1.clientWidth;
+            canvasMain.height = p1.clientHeight;
+            
+            let p2 = canvasPlot.parentElement;
+            canvasPlot.width = p2.clientWidth;
+            canvasPlot.height = p2.clientHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawMainCanvas() {
+            const W = canvasMain.width;
+            const H = canvasMain.height;
+            ctxMain.clearRect(0, 0, W, H);
+            
+            if (!State.tmmData) return;
+
+            // Geometry setup
+            let total_barrier_width = State.N * State.a + (State.N - 1) * State.w;
+            let x_min = -2.0;
+            let x_max = total_barrier_width + 2.0;
+            
+            let v_max = Math.max(15, State.V0 * 1.5);
+            let y_min = -v_max * 0.2;
+            let y_max = v_max * 1.3;
+
+            const mapX = (x) => ((x - x_min) / (x_max - x_min)) * W;
+            const mapY = (y) => H - ((y - y_min) / (y_max - y_min)) * H;
+
+            // 1. Draw Potential V(x) Background Blocks
+            ctxMain.fillStyle = 'rgba(71, 85, 105, 0.4)'; // Barrier color
+            
+            let current_x = 0;
+            for (let i = 0; i < State.N; i++) {
+                let px1 = mapX(current_x);
+                let px2 = mapX(current_x + State.a);
+                let py_v = mapY(State.V0);
+                let py_0 = mapY(0);
+                
+                ctxMain.fillRect(px1, py_v, px2 - px1, py_0 - py_v);
+                
+                // Border lines for barrier
+                ctxMain.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+                ctxMain.lineWidth = 1;
+                ctxMain.beginPath();
+                ctxMain.moveTo(px1, py_0); ctxMain.lineTo(px1, py_v); ctxMain.lineTo(px2, py_v); ctxMain.lineTo(px2, py_0);
+                ctxMain.stroke();
+
+                current_x += State.a;
+                if (i < State.N - 1) current_x += State.w;
+            }
+
+            // Draw x-axis (V=0)
+            ctxMain.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctxMain.beginPath();
+            ctxMain.moveTo(0, mapY(0));
+            ctxMain.lineTo(W, mapY(0));
+            ctxMain.stroke();
+
+            // 2. Draw Energy Level Line
+            let y_E = mapY(State.E);
+            ctxMain.strokeStyle = 'rgba(251, 191, 36, 0.6)'; // Energy color
+            ctxMain.setLineDash([5, 5]);
+            ctxMain.lineWidth = 2;
+            ctxMain.beginPath();
+            ctxMain.moveTo(0, y_E);
+            ctxMain.lineTo(W, y_E);
+            ctxMain.stroke();
+            ctxMain.setLineDash([]);
+            
+            ctxMain.fillStyle = 'rgba(251, 191, 36, 1)';
+            ctxMain.font = '12px sans-serif';
+            ctxMain.fillText("E", 10, y_E - 5);
+
+            // 3. Evaluate and Draw Wavefunction
+            let pts = 600;
+            let waveData = [];
+            for (let i = 0; i <= pts; i++) {
+                let x = x_min + (x_max - x_min) * (i / pts);
+                let w = evaluateWave(x, State.time, State.tmmData);
+                waveData.push({ x: mapX(x), w: w });
+            }
+
+            let wave_scale = (v_max / 4.0); // Scale amplitude for visual fit
+
+            // Plot Probability Density Fill
+            if (State.showProb) {
+                ctxMain.fillStyle = 'rgba(52, 211, 153, 0.25)';
+                ctxMain.beginPath();
+                ctxMain.moveTo(waveData[0].x, y_E);
+                for (let pt of waveData) {
+                    ctxMain.lineTo(pt.x, mapY(State.E + pt.w.prob * wave_scale));
+                }
+                ctxMain.lineTo(waveData[waveData.length-1].x, y_E);
+                ctxMain.closePath();
+                ctxMain.fill();
+                
+                // Outline
+                ctxMain.strokeStyle = 'rgba(52, 211, 153, 0.8)';
+                ctxMain.lineWidth = 1.5;
+                ctxMain.beginPath();
+                for (let pt of waveData) {
+                    ctxMain.lineTo(pt.x, mapY(State.E + pt.w.prob * wave_scale));
+                }
+                ctxMain.stroke();
+            }
+
+            // Plot Imaginary Part
+            if (State.showImag) {
+                ctxMain.strokeStyle = 'rgba(244, 63, 94, 0.8)'; // Red
+                ctxMain.lineWidth = 2;
+                ctxMain.beginPath();
+                for (let pt of waveData) {
+                    ctxMain.lineTo(pt.x, mapY(State.E + pt.w.imag * wave_scale));
+                }
+                ctxMain.stroke();
+            }
+
+            // Plot Real Part
+            if (State.showReal) {
+                ctxMain.strokeStyle = 'rgba(96, 165, 250, 0.9)'; // Blue
+                ctxMain.lineWidth = 2;
+                ctxMain.beginPath();
+                for (let pt of waveData) {
+                    ctxMain.lineTo(pt.x, mapY(State.E + pt.w.real * wave_scale));
+                }
+                ctxMain.stroke();
+            }
+        }
+
+        function drawPlotCanvas() {
+            const W = canvasPlot.width;
+            const H = canvasPlot.height;
+            ctxPlot.clearRect(0, 0, W, H);
+            
+            if (State.scanData.length === 0) return;
+
+            let eMax = State.scanData[State.scanData.length-1].E;
+            const padX = 40;
+            const padY = 30;
+
+            const mapXE = (e) => padX + (e / eMax) * (W - padX * 1.5);
+            const mapYT = (t) => H - padY - t * (H - padY * 1.5);
+
+            // Axes
+            ctxPlot.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctxPlot.lineWidth = 1;
+            ctxPlot.beginPath();
+            ctxPlot.moveTo(padX, padY / 2);
+            ctxPlot.lineTo(padX, H - padY);
+            ctxPlot.lineTo(W - padX / 2, H - padY);
+            ctxPlot.stroke();
+
+            // Labels
+            ctxPlot.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctxPlot.font = '11px sans-serif';
+            ctxPlot.textAlign = 'center';
+            ctxPlot.fillText("Energy E (eV)", W / 2, H - 5);
+            
+            ctxPlot.save();
+            ctxPlot.translate(12, H / 2);
+            ctxPlot.rotate(-Math.PI / 2);
+            ctxPlot.fillText("Transmission T", 0, 0);
+            ctxPlot.restore();
+
+            // T=1 line
+            ctxPlot.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctxPlot.setLineDash([3, 3]);
+            ctxPlot.beginPath();
+            ctxPlot.moveTo(padX, mapYT(1));
+            ctxPlot.lineTo(W - padX / 2, mapYT(1));
+            ctxPlot.stroke();
+            ctxPlot.setLineDash([]);
+            ctxPlot.textAlign = 'right';
+            ctxPlot.fillText("1.0", padX - 5, mapYT(1) + 4);
+            ctxPlot.fillText("0.0", padX - 5, mapYT(0) + 4);
+
+            // Draw Scan Curve
+            ctxPlot.strokeStyle = 'var(--color-prob)';
+            ctxPlot.lineWidth = 2;
+            ctxPlot.beginPath();
+            for (let i = 0; i < State.scanData.length; i++) {
+                let pt = State.scanData[i];
+                let px = mapXE(pt.E);
+                let py = mapYT(pt.T);
+                if (i === 0) ctxPlot.moveTo(px, py);
+                else ctxPlot.lineTo(px, py);
+            }
+            ctxPlot.stroke();
+
+            // Draw Current E indicator
+            let currX = mapXE(State.E);
+            ctxPlot.strokeStyle = 'var(--color-energy)';
+            ctxPlot.lineWidth = 1.5;
+            ctxPlot.beginPath();
+            ctxPlot.moveTo(currX, padY / 2);
+            ctxPlot.lineTo(currX, H - padY);
+            ctxPlot.stroke();
+            
+            // Draw point at current (E, T)
+            let currT = State.tmmData.T;
+            ctxPlot.fillStyle = 'var(--color-energy)';
+            ctxPlot.beginPath();
+            ctxPlot.arc(currX, mapYT(currT), 4, 0, Math.PI * 2);
+            ctxPlot.fill();
+        }
+
+        /**
+         * Interaction & Animation Loop
+         */
+        function setupUI() {
+            const bindSlider = (id, prop, isStructure = true) => {
+                const slider = document.getElementById(`slider-${id}`);
+                const valDisp = document.getElementById(`val-${id}`);
+                slider.addEventListener('input', (e) => {
+                    let v = parseFloat(e.target.value);
+                    State[prop] = v;
+                    valDisp.innerText = v.toFixed(id==='N'?0:(id==='a'||id==='w')?2:1) + (id==='E'||id==='V'?' eV':id==='N'?'':id==='m'?' mₑ':' nm');
+                    
+                    updatePhysics();
+                    if (isStructure) generateScanData();
+                    drawPlotCanvas(); // force redraw of plot immediately
+                });
+            };
+
+            bindSlider('E', 'E', false); // Changing E doesn't change structure
+            bindSlider('V', 'V0', true);
+            bindSlider('a', 'a', true);
+            bindSlider('w', 'w', true);
+            bindSlider('N', 'N', true);
+            bindSlider('m', 'm', true);
+
+            document.getElementById('check-real').addEventListener('change', (e) => State.showReal = e.target.checked);
+            document.getElementById('check-imag').addEventListener('change', (e) => State.showImag = e.target.checked);
+            document.getElementById('check-prob').addEventListener('change', (e) => State.showProb = e.target.checked);
+
+            const btnPlay = document.getElementById('btn-play');
+            btnPlay.addEventListener('click', () => {
+                State.isPlaying = !State.isPlaying;
+                btnPlay.innerText = State.isPlaying ? "Pause Time" : "Play Time";
+                btnPlay.classList.toggle('active', !State.isPlaying);
+            });
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                document.getElementById('slider-E').value = 5.0; document.getElementById('slider-E').dispatchEvent(new Event('input'));
+                document.getElementById('slider-V').value = 8.0; document.getElementById('slider-V').dispatchEvent(new Event('input'));
+                document.getElementById('slider-a').value = 0.5; document.getElementById('slider-a').dispatchEvent(new Event('input'));
+                document.getElementById('slider-w').value = 1.0; document.getElementById('slider-w').dispatchEvent(new Event('input'));
+                document.getElementById('slider-N').value = 1; document.getElementById('slider-N').dispatchEvent(new Event('input'));
+                document.getElementById('slider-m').value = 1.0; document.getElementById('slider-m').dispatchEvent(new Event('input'));
+                State.time = 0;
+            });
+        }
+
+        let lastTime = performance.now();
+        function animate(now) {
+            let dt = (now - lastTime) / 1000.0;
+            lastTime = now;
+            
+            if (State.isPlaying) {
+                // Advance phase. Slower multiplier for visual clarity
+                State.time += dt * 0.5; 
+            }
+            
+            drawMainCanvas();
+            requestAnimationFrame(animate);
+        }
+
+        function init() {
+            setupUI();
+            resizeCanvas();
+            updatePhysics();
+            generateScanData();
+            drawPlotCanvas();
+            requestAnimationFrame(animate);
+        }
+
+        // Delay start slightly to allow fonts/layout to settle
+        window.onload = () => setTimeout(init, 100);
+
+    </script>
+</body>
+</html>

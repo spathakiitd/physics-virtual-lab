@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compton Scattering Simulation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Custom scrollbar for sidebar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a; 
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155; 
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569; 
+    }
+    /* Slider styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      margin-top: -6px;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      cursor: pointer;
+      background: #334155;
+      border-radius: 2px;
+    }
+    input[type=range].accent-red-500::-webkit-slider-thumb {
+      background: #ef4444;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-200 font-sans overflow-hidden">
+
+  <div class="flex flex-col md:flex-row h-screen">
+    
+    <!-- --- SIMULATION VIEW --- -->
+    <div class="flex-1 relative border-r border-slate-800 flex flex-col">
+      <!-- Top Header/Status bar -->
+      <div class="absolute top-4 left-4 z-10 flex items-center gap-4">
+        <div class="flex items-center gap-2 bg-slate-900/80 p-3 rounded-xl border border-slate-700/50 backdrop-blur-md">
+          <i data-lucide="activity" class="text-blue-400 w-5 h-5"></i>
+          <h1 class="text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            Compton Scattering
+          </h1>
+        </div>
+        
+        <!-- Phase Indicator -->
+        <div class="hidden lg:flex gap-2 text-sm font-medium" id="phase-indicators">
+           <span id="phase-1" class="px-3 py-1 rounded-full border border-slate-700 text-slate-500">1. Approach</span>
+           <span id="phase-2" class="px-3 py-1 rounded-full border border-slate-700 text-slate-500">2. Collision</span>
+           <span id="phase-3" class="px-3 py-1 rounded-full border border-slate-700 text-slate-500">3. Scattering</span>
+        </div>
+      </div>
+
+      <!-- SVG Canvas -->
+      <svg id="canvas" class="w-full h-full" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          
+          <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" />
+          </marker>
+          <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+          </marker>
+          <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
+          </marker>
+        </defs>
+
+        <!-- Grid lines -->
+        <g stroke="#1e293b" stroke-width="1" stroke-dasharray="4 4">
+          <line x1="0" y1="300" x2="600" y2="300" />
+          <line x1="300" y1="0" x2="300" y2="600" />
+        </g>
+
+        <!-- Momentum Vectors (Optional) -->
+        <g id="vectors-group" opacity="0.6" style="display: none;">
+          <!-- Incident momentum (faded) -->
+          <line x1="200" y1="300" x2="300" y2="300" stroke="#3b82f6" stroke-width="2" stroke-dasharray="2 2" />
+          <text x="250" y="290" fill="#3b82f6" font-size="12" text-anchor="middle">Initial p</text>
+
+          <!-- Scattered photon momentum -->
+          <line id="scattered-momentum" x1="300" y1="300" x2="300" y2="300" stroke="#ef4444" stroke-width="2" marker-end="url(#arrowRed)" />
+          
+          <!-- Electron recoil momentum -->
+          <line id="electron-momentum" x1="300" y1="300" x2="300" y2="300" stroke="#22c55e" stroke-width="2" marker-end="url(#arrowGreen)" />
+          
+          <!-- Angle Arc Theta -->
+          <path id="angle-arc" fill="none" stroke="#ef4444" stroke-width="1" />
+          <text id="angle-label" fill="#ef4444" font-size="14" dominant-baseline="middle">θ</text>
+        </g>
+
+        <!-- Incident Photon -->
+        <g id="incident-group">
+          <!-- Wave -->
+          <path id="incident-wave" fill="none" stroke="#3b82f6" stroke-width="3" filter="url(#glow)" />
+          <!-- Particle Core -->
+          <circle id="incident-particle" cy="300" r="4" fill="#60a5fa" filter="url(#glow)" />
+        </g>
+
+        <!-- Scattered Photon -->
+        <g id="scattered-group" style="display: none;">
+          <path id="scattered-wave" fill="none" stroke="#ef4444" stroke-width="3" filter="url(#glow)" />
+          <circle id="scattered-particle" r="4" fill="#f87171" filter="url(#glow)" />
+        </g>
+
+        <!-- Electron -->
+        <g>
+          <!-- Target Ring -->
+          <circle cx="300" cy="300" r="8" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="2 2" />
+          
+          <!-- Electron Body -->
+          <circle id="electron-body" cx="300" cy="300" r="6" fill="#22c55e" filter="url(#glow)" />
+          <text id="electron-label" fill="#4ade80" font-size="12" style="display: none;">e⁻</text>
+        </g>
+
+      </svg>
+
+      <!-- Live Values Overlay -->
+      <div id="live-values" class="absolute bottom-4 left-4 right-4 lg:right-auto lg:w-80 bg-slate-900/90 p-4 rounded-xl border border-slate-700/50 backdrop-blur-md text-sm shadow-xl">
+        <h3 class="text-slate-400 font-semibold mb-2 uppercase tracking-wider text-xs flex justify-between">
+          Real-time Measurements
+          <span id="active-indicator" class="text-green-400 animate-pulse" style="display: none;">● Active</span>
+        </h3>
+        <div class="space-y-2 font-mono">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-1">
+            <span class="text-blue-400">Incident λ:</span>
+            <span id="val-lambda-i">0.0000 pm</span>
+          </div>
+          <div class="flex justify-between items-center border-b border-slate-800 pb-1">
+            <span class="text-red-400">Scattered λ':</span>
+            <span id="val-lambda-f">0.0000 pm</span>
+          </div>
+          <div class="flex justify-between items-center bg-slate-800/50 -mx-2 px-2 py-1 rounded">
+            <span class="text-yellow-400 font-bold">Δλ Shift:</span>
+            <span id="val-lambda-shift" class="font-bold text-yellow-400">0.0000 pm</span>
+          </div>
+          <div class="flex justify-between items-center pt-1">
+            <span class="text-green-400">Electron Recoil (K):</span>
+            <span id="val-recoil">0.000 keV</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- --- CONTROL PANEL --- -->
+    <div class="w-full md:w-96 bg-slate-900 border-l border-slate-800 flex flex-col max-h-screen overflow-y-auto">
+      
+      <!-- Core Formula Display -->
+      <div class="p-6 bg-slate-950/50 border-b border-slate-800">
+        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <i data-lucide="info" class="w-4 h-4"></i> Governing Equation
+        </h2>
+        <div class="bg-slate-900 border border-slate-700 rounded-lg p-4 flex justify-center items-center shadow-inner">
+          <div class="text-lg font-serif flex items-center gap-2">
+            <span>λ' - λ =</span>
+            <div class="flex flex-col items-center leading-none">
+              <span class="border-b border-slate-300 px-1 pb-1">h</span>
+              <span class="pt-1">m<sub class="text-xs">e</sub>c</span>
+            </div>
+            <span>(1 - cos θ)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparative Modes -->
+      <div class="p-6 border-b border-slate-800">
+        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Highlight Modes</h3>
+        <div class="grid grid-cols-2 gap-3">
+          <button id="btn-preset-xray" class="p-3 rounded-lg border transition-all text-left bg-blue-600/20 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+            <div class="font-bold text-blue-300 text-sm">Case 1: X-Ray</div>
+            <div class="text-xs text-slate-400 mt-1">High energy. Noticeable shift & recoil.</div>
+          </button>
+          <button id="btn-preset-visible" class="p-3 rounded-lg border transition-all text-left bg-slate-800/50 border-slate-700 hover:bg-slate-800">
+            <div class="font-bold text-orange-300 text-sm">Case 2: Visible Light</div>
+            <div class="text-xs text-slate-400 mt-1">Low energy. Negligible shift.</div>
+          </button>
+        </div>
+
+        <!-- Educational Explanations -->
+        <div id="explanation-visible" class="mt-4 p-3 bg-orange-950/30 border border-orange-900/50 rounded-lg text-sm text-orange-200/90 leading-relaxed" style="display: none;">
+          <strong class="text-orange-400">Critical Insight:</strong> Compton scattering is not observable in visible light because the photon energy is too low. The wavelength (~500,000 pm) is much larger compared to the electron's Compton wavelength (~2.4 pm), resulting in an extremely small and practically unmeasurable shift.
+        </div>
+        
+        <div id="explanation-xray" class="mt-4 p-3 bg-blue-950/30 border border-blue-900/50 rounded-lg text-sm text-blue-200/90 leading-relaxed">
+          <strong class="text-blue-400">Critical Insight:</strong> High-energy X-rays and Gamma rays have wavelengths similar to the Compton wavelength (~2.4 pm). Thus, the wavelength shift during collision is highly significant, and the electron recoils with substantial energy.
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="p-6 flex-1">
+        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <i data-lucide="settings-2" class="w-4 h-4"></i> Parameters
+        </h3>
+
+        <div class="space-y-6">
+          <!-- Energy Slider -->
+          <div>
+            <div class="flex justify-between mb-2">
+              <label class="text-sm font-medium text-slate-300">Incident Energy</label>
+              <span id="label-energy" class="text-sm text-blue-400 font-mono bg-blue-950/50 px-2 py-0.5 rounded">
+                100.000 keV
+              </span>
+            </div>
+            <input 
+              id="slider-energy"
+              type="range" 
+              min="-3" max="3" step="0.1" 
+              value="2"
+              class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            />
+            <div class="flex justify-between text-xs text-slate-500 mt-1">
+              <span>Visible</span>
+              <span>UV</span>
+              <span>X-Ray</span>
+              <span>Gamma</span>
+            </div>
+          </div>
+
+          <!-- Angle Slider -->
+          <div>
+            <div class="flex justify-between mb-2">
+              <label class="text-sm font-medium text-slate-300">Scattering Angle (θ)</label>
+              <span id="label-angle" class="text-sm text-red-400 font-mono bg-red-950/50 px-2 py-0.5 rounded">
+                90°
+              </span>
+            </div>
+            <input 
+              id="slider-angle"
+              type="range" 
+              min="0" max="180" step="1" 
+              value="90"
+              class="accent-red-500 w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+            />
+            <div class="flex justify-between text-xs text-slate-500 mt-1">
+              <span>0° (No Shift)</span>
+              <span>90°</span>
+              <span>180° (Max)</span>
+            </div>
+          </div>
+        </div>
+
+        <hr class="border-slate-800 my-6" />
+
+        <!-- Animation & Display Toggles -->
+        <div class="space-y-4">
+          <div class="flex gap-2">
+            <button id="btn-play" class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-semibold transition-colors bg-slate-800 text-slate-300 hover:bg-slate-700">
+              <i data-lucide="pause" class="w-4 h-4 icon-pause"></i>
+              <i data-lucide="play" class="w-4 h-4 icon-play" style="display: none;"></i>
+              <span id="text-play">Pause</span>
+            </button>
+            <button id="btn-reset" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors" title="Reset Animation">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+             <button id="btn-slowmo" class="flex items-center justify-center gap-2 p-2 rounded-lg border text-sm transition-colors bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800">
+              <i data-lucide="snail" class="w-4 h-4 icon-snail" style="display: none;"></i>
+              <i data-lucide="fast-forward" class="w-4 h-4 icon-fast"></i>
+              Slow Mo
+            </button>
+            
+            <button id="btn-vectors" class="flex items-center justify-center gap-2 p-2 rounded-lg border text-sm transition-colors bg-slate-700 border-slate-500 text-slate-200">
+              <i data-lucide="eye" class="w-4 h-4 icon-eye"></i>
+              <i data-lucide="eye-off" class="w-4 h-4 icon-eye-off" style="display: none;"></i>
+              Vectors
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // --- PHYSICS CONSTANTS ---
+    const H_C = 1240; 
+    const ME_C2 = 511; 
+    const COMPTON_WAVELENGTH = 2.426; 
+    const cx = 300;
+    const cy = 300;
+    const R = 350; 
+
+    // --- STATE ---
+    let state = {
+      energyLog: 2,
+      angleDeg: 90,
+      isPlaying: true,
+      isSlowMo: false,
+      animProgress: -1,
+      globalPhase: 0,
+      showVectors: true,
+      presetMode: 'xray' // 'xray', 'visible', 'custom'
+    };
+
+    let physics = {};
+    let previousTime = null;
+    let requestRef;
+
+    // --- DOM ELEMENTS ---
+    const els = {
+      sliderEnergy: document.getElementById('slider-energy'),
+      sliderAngle: document.getElementById('slider-angle'),
+      labelEnergy: document.getElementById('label-energy'),
+      labelAngle: document.getElementById('label-angle'),
+      
+      btnPlay: document.getElementById('btn-play'),
+      textPlay: document.getElementById('text-play'),
+      iconPlay: document.querySelector('.icon-play'),
+      iconPause: document.querySelector('.icon-pause'),
+      
+      btnReset: document.getElementById('btn-reset'),
+      
+      btnSlowmo: document.getElementById('btn-slowmo'),
+      iconSnail: document.querySelector('.icon-snail'),
+      iconFast: document.querySelector('.icon-fast'),
+      
+      btnVectors: document.getElementById('btn-vectors'),
+      iconEye: document.querySelector('.icon-eye'),
+      iconEyeOff: document.querySelector('.icon-eye-off'),
+
+      btnPresetXray: document.getElementById('btn-preset-xray'),
+      btnPresetVisible: document.getElementById('btn-preset-visible'),
+      expXray: document.getElementById('explanation-xray'),
+      expVisible: document.getElementById('explanation-visible'),
+
+      valLambdaI: document.getElementById('val-lambda-i'),
+      valLambdaF: document.getElementById('val-lambda-f'),
+      valLambdaShift: document.getElementById('val-lambda-shift'),
+      valRecoil: document.getElementById('val-recoil'),
+      activeIndicator: document.getElementById('active-indicator'),
+
+      incidentGroup: document.getElementById('incident-group'),
+      incidentWave: document.getElementById('incident-wave'),
+      incidentParticle: document.getElementById('incident-particle'),
+      
+      scatteredGroup: document.getElementById('scattered-group'),
+      scatteredWave: document.getElementById('scattered-wave'),
+      scatteredParticle: document.getElementById('scattered-particle'),
+      
+      electronBody: document.getElementById('electron-body'),
+      electronLabel: document.getElementById('electron-label'),
+      
+      vectorsGroup: document.getElementById('vectors-group'),
+      scatteredMomentum: document.getElementById('scattered-momentum'),
+      electronMomentum: document.getElementById('electron-momentum'),
+      angleArc: document.getElementById('angle-arc'),
+      angleLabel: document.getElementById('angle-label'),
+
+      phase1: document.getElementById('phase-1'),
+      phase2: document.getElementById('phase-2'),
+      phase3: document.getElementById('phase-3'),
+    };
+
+    // --- HELPERS ---
+    const formatNumber = (num, decimals = 3) => {
+      if (num < 0.001 || num > 10000) return num.toExponential(2);
+      return num.toFixed(decimals);
+    };
+
+    const getVisualLambda = (pm) => {
+      if (pm > 100) return 60; 
+      return Math.max(8, 15 + pm * 3); 
+    };
+
+    const generateWavePath = (startX, startY, angle, progress, visualLambda, packetLength, phase, isScattered) => {
+      let path = '';
+      const amplitude = 12;
+      let distance = isScattered ? Math.max(0, progress * R) : (progress * R);
+      
+      if (!isScattered && progress > 0) return ''; 
+      if (isScattered && progress <= 0) return ''; 
+
+      let packetEndDist = distance;
+      let packetStartDist = packetEndDist - packetLength;
+
+      let isFirst = true;
+      for (let d = packetStartDist; d <= packetEndDist; d += 1) {
+        const envelope = Math.sin(Math.PI * (d - packetStartDist) / packetLength);
+        const currentAmp = amplitude * Math.max(0, envelope);
+        
+        const k = (2 * Math.PI) / visualLambda;
+        const waveY = currentAmp * Math.sin(k * d - phase);
+
+        const px = startX + d * Math.cos(angle) - waveY * Math.sin(angle);
+        const py = startY + d * Math.sin(angle) + waveY * Math.cos(angle);
+        
+        if (isFirst) {
+          path += `M ${px} ${py} `;
+          isFirst = false;
+        } else {
+          path += `L ${px} ${py} `;
+        }
+      }
+      return path;
+    };
+
+    // --- PHYSICS UPDATE ---
+    function updatePhysics() {
+      const E_i = Math.pow(10, state.energyLog);
+      const lambda_i = H_C / E_i;
+      const theta_rad = (state.angleDeg * Math.PI) / 180;
+      
+      const lambda_f = lambda_i + COMPTON_WAVELENGTH * (1 - Math.cos(theta_rad));
+      const E_f = H_C / lambda_f;
+      const K_e = E_i - E_f;
+      
+      const p_i = E_i;
+      const p_f = E_f;
+      const p_ex = p_i - p_f * Math.cos(theta_rad);
+      const p_ey = p_f * Math.sin(theta_rad);
+      
+      let phi_rad = Math.atan2(p_ey, p_ex);
+      if (K_e < 0.000001) phi_rad = 0;
+
+      const visual_lambda_i = getVisualLambda(lambda_i);
+      const visual_lambda_f = getVisualLambda(lambda_f);
+
+      physics = {
+        E_i, lambda_i, E_f, lambda_f, K_e, theta_rad, phi_rad,
+        visual_lambda_i, visual_lambda_f,
+        packetLength_i: visual_lambda_i * 4,
+        packetLength_f: visual_lambda_f * 4
+      };
+
+      updateUI();
+    }
+
+    // --- UI UPDATE (Static values & toggles) ---
+    function updateUI() {
+      // Sliders & Labels
+      els.sliderEnergy.value = state.energyLog;
+      els.sliderAngle.value = state.angleDeg;
+      els.labelEnergy.textContent = `${formatNumber(physics.E_i, 3)} keV`;
+      els.labelAngle.textContent = `${state.angleDeg}°`;
+
+      // Live values
+      els.valLambdaI.textContent = `${formatNumber(physics.lambda_i, 4)} pm`;
+      els.valLambdaF.textContent = `${formatNumber(physics.lambda_f, 4)} pm`;
+      els.valLambdaShift.textContent = `${formatNumber(physics.lambda_f - physics.lambda_i, 4)} pm`;
+      els.valRecoil.textContent = `${formatNumber(physics.K_e)} keV`;
+
+      // Vectors static setup
+      els.scatteredMomentum.setAttribute('x2', cx + 80 * Math.cos(-physics.theta_rad));
+      els.scatteredMomentum.setAttribute('y2', cy + 80 * Math.sin(-physics.theta_rad));
+      els.electronMomentum.setAttribute('x2', cx + 80 * Math.cos(physics.phi_rad));
+      els.electronMomentum.setAttribute('y2', cy + 80 * Math.sin(physics.phi_rad));
+      
+      els.angleArc.setAttribute('d', `M ${cx + 40} ${cy} A 40 40 0 0 0 ${cx + 40 * Math.cos(-physics.theta_rad)} ${cy + 40 * Math.sin(-physics.theta_rad)}`);
+      els.angleLabel.setAttribute('x', cx + 50 * Math.cos(-physics.theta_rad/2));
+      els.angleLabel.setAttribute('y', cy + 50 * Math.sin(-physics.theta_rad/2));
+
+      // Presets
+      const classActiveBlue = "bg-blue-600/20 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.15)]".split(" ");
+      const classActiveOrange = "bg-orange-600/20 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.15)]".split(" ");
+      const classInactive = "bg-slate-800/50 border-slate-700 hover:bg-slate-800".split(" ");
+
+      els.btnPresetXray.classList.remove(...classActiveBlue, ...classInactive);
+      els.btnPresetVisible.classList.remove(...classActiveOrange, ...classInactive);
+      els.expXray.style.display = 'none';
+      els.expVisible.style.display = 'none';
+
+      if (state.presetMode === 'xray') {
+        els.btnPresetXray.classList.add(...classActiveBlue);
+        els.btnPresetVisible.classList.add(...classInactive);
+        els.expXray.style.display = 'block';
+      } else if (state.presetMode === 'visible') {
+        els.btnPresetXray.classList.add(...classInactive);
+        els.btnPresetVisible.classList.add(...classActiveOrange);
+        els.expVisible.style.display = 'block';
+      } else {
+        els.btnPresetXray.classList.add(...classInactive);
+        els.btnPresetVisible.classList.add(...classInactive);
+      }
+    }
+
+    // --- RENDER LOOP (Animation) ---
+    function render(time) {
+      if (previousTime !== null && state.isPlaying) {
+        const deltaTime = time - previousTime;
+        const timeScale = state.isSlowMo ? 0.0002 : 0.001;
+        
+        state.animProgress += deltaTime * timeScale;
+        if (state.animProgress > 1.2) state.animProgress = -1;
+        
+        state.globalPhase += deltaTime * 0.015;
+      }
+      previousTime = time;
+
+      const p = state.animProgress;
+
+      // Phase Indicators
+      const baseClass = "px-3 py-1 rounded-full border border-slate-700 text-slate-500".split(" ");
+      els.phase1.className = "px-3 py-1 rounded-full border";
+      els.phase2.className = "px-3 py-1 rounded-full border";
+      els.phase3.className = "px-3 py-1 rounded-full border";
+      
+      if (p < 0) {
+        els.phase1.classList.add("bg-blue-500/20", "border-blue-500/50", "text-blue-300");
+        els.phase2.classList.add("border-slate-700", "text-slate-500");
+        els.phase3.classList.add("border-slate-700", "text-slate-500");
+      } else if (p >= 0 && p < 0.1) {
+        els.phase1.classList.add("border-slate-700", "text-slate-500");
+        els.phase2.classList.add("bg-yellow-500/20", "border-yellow-500/50", "text-yellow-300");
+        els.phase3.classList.add("border-slate-700", "text-slate-500");
+      } else {
+        els.phase1.classList.add("border-slate-700", "text-slate-500");
+        els.phase2.classList.add("border-slate-700", "text-slate-500");
+        els.phase3.classList.add("bg-red-500/20", "border-red-500/50", "text-red-300");
+      }
+
+      els.activeIndicator.style.display = p > 0 ? 'inline' : 'none';
+      els.vectorsGroup.style.display = (state.showVectors && p > 0) ? 'inline' : 'none';
+
+      // Incident
+      if (p <= 0) {
+        els.incidentGroup.style.display = 'inline';
+        els.incidentWave.setAttribute('d', generateWavePath(cx, cy, 0, p, physics.visual_lambda_i, physics.packetLength_i, state.globalPhase, false));
+        els.incidentParticle.setAttribute('cx', cx + p * R);
+      } else {
+        els.incidentGroup.style.display = 'none';
+      }
+
+      // Scattered
+      if (p > 0) {
+        els.scatteredGroup.style.display = 'inline';
+        els.scatteredWave.setAttribute('d', generateWavePath(cx, cy, -physics.theta_rad, p, physics.visual_lambda_f, physics.packetLength_f, state.globalPhase, true));
+        els.scatteredParticle.setAttribute('cx', cx + p * R * Math.cos(-physics.theta_rad));
+        els.scatteredParticle.setAttribute('cy', cy + p * R * Math.sin(-physics.theta_rad));
+      } else {
+        els.scatteredGroup.style.display = 'none';
+      }
+
+      // Electron
+      if (p > 0) {
+        const ex = cx + p * R * 0.4 * Math.cos(physics.phi_rad);
+        const ey = cy + p * R * 0.4 * Math.sin(physics.phi_rad);
+        els.electronBody.setAttribute('cx', ex);
+        els.electronBody.setAttribute('cy', ey);
+        els.electronLabel.style.display = 'inline';
+        els.electronLabel.setAttribute('x', ex + 10);
+        els.electronLabel.setAttribute('y', ey + 15);
+      } else {
+        els.electronBody.setAttribute('cx', cx);
+        els.electronBody.setAttribute('cy', cy);
+        els.electronLabel.style.display = 'none';
+      }
+
+      requestRef = requestAnimationFrame(render);
+    }
+
+    // --- EVENT LISTENERS ---
+    els.sliderEnergy.addEventListener('input', (e) => {
+      state.energyLog = parseFloat(e.target.value);
+      state.presetMode = 'custom';
+      state.animProgress = -1;
+      updatePhysics();
+    });
+
+    els.sliderAngle.addEventListener('input', (e) => {
+      state.angleDeg = parseInt(e.target.value);
+      state.animProgress = -1;
+      updatePhysics();
+    });
+
+    els.btnPlay.addEventListener('click', () => {
+      state.isPlaying = !state.isPlaying;
+      if (state.isPlaying) {
+        els.btnPlay.className = "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-semibold transition-colors bg-slate-800 text-slate-300 hover:bg-slate-700";
+        els.textPlay.textContent = "Pause";
+        els.iconPause.style.display = 'inline';
+        els.iconPlay.style.display = 'none';
+      } else {
+        els.btnPlay.className = "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-500";
+        els.textPlay.textContent = "Play";
+        els.iconPause.style.display = 'none';
+        els.iconPlay.style.display = 'inline';
+      }
+    });
+
+    els.btnReset.addEventListener('click', () => {
+      state.animProgress = -1;
+    });
+
+    els.btnSlowmo.addEventListener('click', () => {
+      state.isSlowMo = !state.isSlowMo;
+      if (state.isSlowMo) {
+        els.btnSlowmo.className = "flex items-center justify-center gap-2 p-2 rounded-lg border text-sm transition-colors bg-purple-900/30 border-purple-500/50 text-purple-300";
+        els.iconSnail.style.display = 'inline';
+        els.iconFast.style.display = 'none';
+      } else {
+        els.btnSlowmo.className = "flex items-center justify-center gap-2 p-2 rounded-lg border text-sm transition-colors bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800";
+        els.iconSnail.style.display = 'none';
+        els.iconFast.style.display = 'inline';
+      }
+    });
+
+    els.btnVectors.addEventListener('click', () => {
+      state.showVectors = !state.showVectors;
+      if (state.showVectors) {
+        els.btnVectors.className = "flex items-center justify-center gap-2 p-2 rounded-lg border text-sm transition-colors bg-slate-700 border-slate-500 text-slate-200";
+        els.iconEye.style.display = 'inline';
+        els.iconEyeOff.style.display = 'none';
+      } else {
+        els.btnVectors.className = "flex items-center justify-center gap-2 p-2 rounded-lg border text-sm transition-colors bg-slate-800/50 border-slate-700 text-slate-500 hover:bg-slate-800";
+        els.iconEye.style.display = 'none';
+        els.iconEyeOff.style.display = 'inline';
+      }
+    });
+
+    els.btnPresetXray.addEventListener('click', () => {
+      state.presetMode = 'xray';
+      state.energyLog = 2;
+      state.angleDeg = 90;
+      state.animProgress = -1;
+      updatePhysics();
+    });
+
+    els.btnPresetVisible.addEventListener('click', () => {
+      state.presetMode = 'visible';
+      state.energyLog = -3;
+      state.angleDeg = 90;
+      state.animProgress = -1;
+      updatePhysics();
+    });
+
+    // --- INIT ---
+    updatePhysics();
+    requestRef = requestAnimationFrame(render);
+
+  </script>
+</body>
+</html>

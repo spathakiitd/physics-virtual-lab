@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heisenberg Uncertainty Principle Simulator</title>
+
+    <!-- Tailwind CSS for layout and utility classes -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js for 3D visualization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Chart.js for 2D probability graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- MathJax for rendering LaTeX equations -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- FontAwesome for UI icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            /* Metallic Scientific Laboratory Theme */
+            --bg-base: #0b0f19;
+            --metal-dark: #151b2b;
+            --metal-panel: linear-gradient(145deg, #1e2638, #111520);
+            --metal-border: #3b455e;
+            --metal-highlight: rgba(255, 255, 255, 0.1);
+            
+            --accent-cyan: #00f0ff;
+            --accent-violet: #b535ff;
+            --accent-gold: #ffd700;
+            --accent-danger: #ff3b3b;
+            
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            
+            --panel-shadow: 5px 5px 15px rgba(0,0,0,0.6), -5px -5px 15px rgba(40,50,70,0.1);
+            --inset-shadow: inset 2px 2px 5px rgba(0,0,0,0.5), inset -1px -1px 2px rgba(255,255,255,0.05);
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            user-select: none;
+        }
+
+        /* Metallic Panel styling */
+        .metal-panel {
+            background: var(--metal-panel);
+            border: 1px solid var(--metal-border);
+            border-top: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            box-shadow: var(--panel-shadow);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .metal-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--metal-highlight), transparent);
+        }
+
+        .metal-inset {
+            background: #0f141e;
+            border: 1px solid #000;
+            border-bottom: 1px solid #2a3441;
+            box-shadow: var(--inset-shadow);
+            border-radius: 4px;
+        }
+
+        /* Nav Tabs */
+        .tab-btn {
+            background: transparent; color: var(--text-muted);
+            transition: all 0.3s ease; border-bottom: 2px solid transparent;
+        }
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active {
+            color: var(--accent-cyan);
+            border-bottom: 2px solid var(--accent-cyan);
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: var(--metal-border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan); }
+
+        /* Metallic Sliders */
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 6px; cursor: pointer;
+            background: var(--metal-dark); border: 1px solid #000;
+            border-radius: 3px; box-shadow: var(--inset-shadow);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 20px;
+            border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff, #888);
+            border: 2px solid var(--accent-cyan); cursor: pointer;
+            margin-top: -8px; box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        /* Typography & Glows */
+        .glow-text-cyan { text-shadow: 0 0 8px var(--accent-cyan); color: var(--accent-cyan); }
+        .glow-text-violet { text-shadow: 0 0 8px var(--accent-violet); color: var(--accent-violet); }
+        .math-font { font-family: 'Times New Roman', Times, serif; font-style: italic; }
+        
+        .tab-content { display: none; height: 100%; overflow-y: auto; }
+        .tab-content.active { display: flex; }
+
+        /* Tooltip System */
+        .tooltip-container { position: relative; cursor: help; border-bottom: 1px dotted rgba(255,255,255,0.5); }
+        .tooltip-container .tooltip-text {
+            visibility: hidden; width: 250px; background-color: #000; color: #fff;
+            text-align: center; border-radius: 6px; padding: 8px; position: absolute;
+            z-index: 100; bottom: 125%; left: 50%; transform: translateX(-50%);
+            opacity: 0; transition: opacity 0.3s; border: 1px solid var(--accent-cyan);
+            font-size: 12px; font-weight: normal; font-family: 'Segoe UI', sans-serif;
+            box-shadow: 0 0 10px rgba(0,240,255,0.3); pointer-events: none;
+        }
+        .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+        /* Interactive Canvas */
+        #canvas-container { width: 100%; height: 100%; position: relative; }
+        
+        /* Layout structures */
+        .split-grid { display: grid; grid-template-columns: 350px 1fr; gap: 1rem; height: 100%; }
+        
+        /* Accordion for Theory */
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        
+        .btn-metallic {
+            background: linear-gradient(to bottom, #3a4556, #242c38);
+            border: 1px solid #526075; border-bottom-color: #1a202c;
+            color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            transition: all 0.1s;
+        }
+        .btn-metallic:hover { background: linear-gradient(to bottom, #4a5566, #2d3748); }
+        .btn-metallic:active { box-shadow: var(--inset-shadow); transform: translateY(1px); }
+    </style>
+</head>
+<body>
+
+    <!-- TOP NAVIGATION -->
+    <header class="metal-panel rounded-none border-t-0 border-l-0 border-r-0 border-b border-gray-700 flex justify-between items-center px-6 py-3 z-10">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-atom text-2xl text-[var(--accent-cyan)] animate-pulse"></i>
+            <div>
+                <h1 class="text-lg font-bold tracking-widest uppercase text-white m-0 leading-tight">Heisenberg</h1>
+                <h2 class="text-[10px] text-[var(--accent-cyan)] tracking-[0.2em] m-0 uppercase">Quantum Instrument Simulator</h2>
+            </div>
+        </div>
+        <nav class="flex gap-6 text-sm font-semibold tracking-wide">
+            <button class="tab-btn active" onclick="switchTab('tab-simulation')"><i class="fa-solid fa-cube mr-1"></i> SIMULATION</button>
+            <button class="tab-btn" onclick="switchTab('tab-theory')"><i class="fa-solid fa-book mr-1"></i> THEORY</button>
+            <button class="tab-btn" onclick="switchTab('tab-fourier')"><i class="fa-solid fa-wave-square mr-1"></i> FOURIER VIEW</button>
+            <button class="tab-btn" onclick="switchTab('tab-solver')"><i class="fa-solid fa-calculator mr-1"></i> PROBLEM SOLVER</button>
+            <button class="tab-btn" onclick="switchTab('tab-whatif')"><i class="fa-solid fa-flask mr-1"></i> WHAT IF?</button>
+            <button class="tab-btn" onclick="switchTab('tab-quiz')"><i class="fa-solid fa-check-double mr-1"></i> QUIZ</button>
+        </nav>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 relative p-4 overflow-hidden">
+        
+        <!-- ================= TAB 1: SIMULATION ================= -->
+        <div id="tab-simulation" class="tab-content active split-grid">
+            
+            <!-- LEFT PANEL: Controls & Metrics -->
+            <div class="flex flex-col gap-4 overflow-y-auto pr-2 pb-10">
+                
+                <!-- Main Control -->
+                <div class="metal-panel p-4">
+                    <h3 class="text-[11px] text-[var(--text-muted)] tracking-widest uppercase mb-4 border-b border-gray-700 pb-1 flex justify-between">
+                        <span>Position Localization</span>
+                        <i class="fa-solid fa-sliders"></i>
+                    </h3>
+                    
+                    <div class="flex justify-between text-[10px] text-gray-400 mb-2 font-bold uppercase">
+                        <span class="text-[var(--accent-cyan)]">Highly Localized</span>
+                        <span>Widely Spread</span>
+                    </div>
+                    <input type="range" id="sim-dx-slider" min="0.1" max="4.0" step="0.01" value="1.0">
+                    
+                    <div id="conceptual-label" class="mt-4 text-xs text-center p-2 metal-inset text-gray-300 font-mono">
+                        Adjusting spatial confinement...
+                    </div>
+                </div>
+
+                <!-- Real-time Mathematical Panel -->
+                <div class="metal-panel p-4 relative">
+                    <div class="absolute top-3 right-3 text-lg opacity-20"><i class="fa-solid fa-microchip"></i></div>
+                    <h3 class="text-[11px] text-[var(--text-muted)] tracking-widest uppercase mb-3 border-b border-gray-700 pb-1">Real-Time State Metrics</h3>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="metal-inset p-3 flex flex-col items-center">
+                            <span class="tooltip-container text-xs text-gray-400 mb-1">
+                                Position Uncert. (Δx)
+                                <span class="tooltip-text">Standard deviation representing the spread of possible position measurements.</span>
+                            </span>
+                            <span class="text-xl font-mono glow-text-cyan" id="metric-dx">1.000</span>
+                        </div>
+                        <div class="metal-inset p-3 flex flex-col items-center">
+                            <span class="tooltip-container text-xs text-gray-400 mb-1">
+                                Momentum Uncert. (Δp)
+                                <span class="tooltip-text">Standard deviation representing the spread of possible momentum measurements.</span>
+                            </span>
+                            <span class="text-xl font-mono glow-text-violet" id="metric-dp">0.500</span>
+                        </div>
+                    </div>
+
+                    <div class="metal-inset p-3 mb-3 border border-[var(--metal-highlight)] bg-black/40">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-400">Uncertainty Product:</span>
+                            <span class="text-lg font-mono text-white">Δx·Δp = <span id="metric-product">0.500</span></span>
+                        </div>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="tooltip-container text-[10px] text-gray-500">
+                                Quantum Limit (ħ/2)
+                                <span class="tooltip-text">The fundamental minimum product of uncertainties for conjugate variables. Here we use natural units ħ = 1.</span>
+                            </span>
+                            <span class="text-xs font-mono text-gray-400">0.500</span>
+                        </div>
+                    </div>
+
+                    <div id="status-indicator" class="text-center py-2 rounded text-xs font-bold tracking-widest border border-green-500 bg-green-900/30 text-green-400 shadow-[0_0_10px_rgba(0,255,0,0.2)]">
+                        <i class="fa-solid fa-check-circle mr-1"></i> ALLOWED QUANTUM STATE
+                    </div>
+                </div>
+
+                <!-- Presets -->
+                <div class="metal-panel p-4">
+                    <h3 class="text-[11px] text-[var(--text-muted)] tracking-widest uppercase mb-3 border-b border-gray-700 pb-1">Preset Scenarios</h3>
+                    <div class="flex flex-col gap-2 text-xs">
+                        <button class="btn-metallic py-2 px-3 rounded text-left" onclick="loadPreset(0.15)">1. Highly Localized Particle</button>
+                        <button class="btn-metallic py-2 px-3 rounded text-left" onclick="loadPreset(3.5)">2. Delocalized / Plane Wave</button>
+                        <button class="btn-metallic py-2 px-3 rounded text-left" onclick="loadPreset(1.0)">3. Intermediate Wave Packet</button>
+                    </div>
+                </div>
+                
+                <!-- 3D Controls -->
+                <div class="flex gap-2">
+                    <button class="btn-metallic flex-1 py-2 rounded text-xs" onclick="resetCamera()"><i class="fa-solid fa-video mr-1"></i> Reset View</button>
+                    <button class="btn-metallic py-2 px-4 rounded text-xs" id="btn-autorotate" onclick="toggleAutoRotate()"><i class="fa-solid fa-rotate"></i></button>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: 3D Canvas & Dual Graphs -->
+            <div class="flex flex-col gap-4 h-full relative">
+                
+                <!-- 3D Environment -->
+                <div class="metal-panel flex-1 relative flex flex-col">
+                    <div class="absolute top-3 left-4 z-10 pointer-events-none">
+                        <h2 class="text-sm font-bold text-white tracking-widest">3D WAVE PACKET VISUALIZATION</h2>
+                        <p class="text-xs text-[var(--accent-gold)]">Complex Probability Amplitude & Particle Cloud</p>
+                    </div>
+                    <div id="canvas-container" class="flex-1 w-full rounded-b-lg overflow-hidden border-t border-[var(--metal-highlight)] bg-black"></div>
+                </div>
+
+                <!-- Position & Momentum Space Graphs -->
+                <div class="grid grid-cols-2 gap-4 h-64">
+                    <div class="metal-panel p-3 flex flex-col">
+                        <h3 class="text-xs font-bold text-[var(--accent-cyan)] text-center tracking-widest mb-1">POSITION SPACE |ψ(x)|²</h3>
+                        <div class="flex-1 relative"><canvas id="chart-pos"></canvas></div>
+                    </div>
+                    <div class="metal-panel p-3 flex flex-col relative">
+                        <div class="absolute -left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 bg-[var(--bg-base)] p-1 rounded-full border border-gray-700">
+                            <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                        </div>
+                        <h3 class="text-xs font-bold text-[var(--accent-violet)] text-center tracking-widest mb-1">MOMENTUM SPACE |φ(p)|²</h3>
+                        <div class="flex-1 relative"><canvas id="chart-mom"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= TAB 2: THEORY ================= -->
+        <div id="tab-theory" class="tab-content flex-col w-full max-w-5xl mx-auto pb-20">
+            <div class="metal-panel p-8 mb-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                    <i class="fa-solid fa-book-open text-9xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-2 tracking-wide">Conceptual Basis of Uncertainty</h2>
+                <p class="text-[var(--text-muted)] text-lg border-b border-gray-700 pb-4 mb-6">A fundamental property of quantum systems, not merely an observational artifact.</p>
+                
+                <div class="space-y-4">
+                    <!-- Theory Accordions -->
+                    <div class="border border-gray-700 rounded bg-black/30">
+                        <button class="w-full text-left p-4 font-semibold text-white hover:bg-white/5 transition flex justify-between items-center" onclick="toggleAccordion(this)">
+                            1. What is the Uncertainty Principle? <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="accordion-content px-4 text-sm text-gray-300 leading-relaxed">
+                            <p class="py-3 border-t border-gray-800">The Heisenberg Uncertainty Principle states that there is a fundamental limit to the precision with which certain pairs of physical properties of a particle, known as complementary or <strong>conjugate variables</strong> (such as position \(x\) and momentum \(p\)), can be known simultaneously. The more precisely the position is determined, the less precisely its momentum can be known, and vice versa.</p>
+                        </div>
+                    </div>
+
+                    <div class="border border-[var(--accent-cyan)] rounded bg-[rgba(0,240,255,0.05)] shadow-[0_0_10px_rgba(0,240,255,0.1)]">
+                        <button class="w-full text-left p-4 font-semibold text-[var(--accent-cyan)] hover:bg-white/5 transition flex justify-between items-center" onclick="toggleAccordion(this)">
+                            2. Mathematical Form (Position-Momentum) <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="accordion-content px-4 text-sm text-gray-300 leading-relaxed">
+                            <div class="py-4 border-t border-[rgba(0,240,255,0.2)] text-center text-2xl">
+                                $$ \Delta x \Delta p \ge \frac{\hbar}{2} $$
+                            </div>
+                            <ul class="list-disc pl-6 pb-4 space-y-2">
+                                <li><strong>\( \Delta x \)</strong>: Uncertainty (standard deviation) in position.</li>
+                                <li><strong>\( \Delta p \)</strong>: Uncertainty (standard deviation) in momentum.</li>
+                                <li><strong>\( \hbar \)</strong>: Reduced Planck constant (\(h / 2\pi \approx 1.054 \times 10^{-34} \text{ J s} \)).</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="border border-gray-700 rounded bg-black/30">
+                        <button class="w-full text-left p-4 font-semibold text-white hover:bg-white/5 transition flex justify-between items-center" onclick="toggleAccordion(this)">
+                            3 & 4. What do Δx and Δp actually mean? <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="accordion-content px-4 text-sm text-gray-300 leading-relaxed">
+                            <p class="py-3 border-t border-gray-800">They are <em>statistical spreads</em>. If you prepare many identical quantum systems in the exact same state and measure the position of some and the momentum of others, \(\Delta x\) is the standard deviation of the position measurements, and \(\Delta p\) is the standard deviation of the momentum measurements. It does <strong>not</strong> mean a single particle is "jumping around" randomly.</p>
+                        </div>
+                    </div>
+
+                    <div class="border border-gray-700 rounded bg-black/30">
+                        <button class="w-full text-left p-4 font-semibold text-white hover:bg-white/5 transition flex justify-between items-center" onclick="toggleAccordion(this)">
+                            5, 6 & 7. Fourier Transforms and Wave Packets <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="accordion-content px-4 text-sm text-gray-300 leading-relaxed">
+                            <p class="pt-3 border-t border-gray-800">In quantum mechanics, a particle is described by a wave function \( \psi(x) \). Momentum is directly related to the wavelength (or wave number \(k\)) via de Broglie's relation \( p = \hbar k \).</p>
+                            <p class="mt-2">To create a highly localized particle (a narrow wave packet in position space), you must sum together many different pure sine waves of various wavelengths. A broad range of wavelengths means a broad range of momenta. This is a mathematical property of the <strong>Fourier Transform</strong>:</p>
+                            <div class="my-3 p-3 bg-black/50 border border-gray-700 rounded text-center text-[var(--accent-gold)]">
+                                Narrow position-space wave packet ↔ Broad momentum-space distribution<br>
+                                Broad position-space wave packet ↔ Narrow momentum-space distribution
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-[var(--accent-danger)] rounded bg-[rgba(255,59,59,0.05)]">
+                        <button class="w-full text-left p-4 font-semibold text-[var(--accent-danger)] hover:bg-white/5 transition flex justify-between items-center" onclick="toggleAccordion(this)">
+                            8 & 9. Common Misconceptions (The Observer Effect) <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="accordion-content px-4 text-sm text-gray-300 leading-relaxed">
+                            <div class="py-3 border-t border-[rgba(255,59,59,0.2)]">
+                                <p class="mb-2 font-bold text-white">FALSE: "Uncertainty is just because bouncing photons off an electron to 'see' it disturbs its momentum."</p>
+                                <p class="mb-4">While the measurement disturbance (Observer Effect) is real, it is <em>distinct</em> from the Uncertainty Principle. The uncertainty relation is an <strong>intrinsic property of the quantum state itself</strong> prior to any measurement. A particle simply <em>does not possess</em> a perfectly defined position and momentum simultaneously.</p>
+                                <ul class="list-disc pl-6 space-y-1 text-gray-400">
+                                    <li>It does NOT mean mathematical models are flawed.</li>
+                                    <li>It does NOT mean macroscopic mechanics are wrong (hbar is just very small).</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-[var(--accent-violet)] rounded bg-[rgba(181,53,255,0.05)]">
+                        <button class="w-full text-left p-4 font-semibold text-[var(--accent-violet)] hover:bg-white/5 transition flex justify-between items-center" onclick="toggleAccordion(this)">
+                            Advanced: Operator Algebra & Commutators <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="accordion-content px-4 text-sm text-gray-300 leading-relaxed">
+                            <p class="pt-3 border-t border-[rgba(181,53,255,0.2)]">Formally, physical observables are represented by Hermitian operators. Position \( \hat{x} \) and momentum \( \hat{p} \) do not commute:</p>
+                            <div class="text-center text-lg my-2 text-white">$$ [\hat{x}, \hat{p}] = i\hbar $$</div>
+                            <p>The generalized Robertson uncertainty relation for any two observables \(A\) and \(B\) is:</p>
+                            <div class="text-center text-lg my-2 text-white">$$ \Delta A \Delta B \ge \frac{1}{2} |\langle [\hat{A},\hat{B}] \rangle| $$</div>
+                            <p class="pb-3">Substituting the position-momentum commutator directly yields Heisenberg's relation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 3: FOURIER VIEW ================= -->
+        <div id="tab-fourier" class="tab-content flex-col h-full split-grid">
+            <div class="metal-panel p-4 flex flex-col">
+                <h2 class="text-lg font-bold text-white mb-2"><i class="fa-solid fa-wave-square text-[var(--accent-cyan)] mr-2"></i>Fourier Synthesis</h2>
+                <p class="text-xs text-[var(--text-muted)] mb-6">Observe how a localized wave packet is constructed by superimposing multiple delocalized waves (momenta).</p>
+                
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-[var(--accent-cyan)] mb-2 uppercase">Range of Momenta (Wave numbers \(k\))</label>
+                    <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+                        <span>Single \(k\) (Delocalized)</span>
+                        <span>Wide range of \(k\) (Localized)</span>
+                    </div>
+                    <input type="range" id="fourier-slider" min="1" max="50" step="1" value="10">
+                    <p class="text-xs mt-2 text-gray-300">Components added: <span id="fourier-count" class="font-mono text-white">10</span></p>
+                </div>
+                
+                <div class="metal-inset p-4 mt-auto mb-4 text-xs text-gray-300">
+                    <strong>Conceptual link:</strong> Each sine wave represents a specific momentum state \(p = \hbar k\). 
+                    To create a narrow "blip" in space (small \(\Delta x\)), we must add together many different waves. 
+                    This spread of necessary waves implies a large uncertainty in momentum (\(\Delta p\)).
+                </div>
+            </div>
+            <div class="metal-panel p-4 relative flex flex-col">
+                <h3 class="text-sm font-bold text-white text-center mb-2">Wave Superposition (Real Part)</h3>
+                <div class="flex-1 relative w-full h-full"><canvas id="chart-fourier"></canvas></div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 4: PROBLEM SOLVER ================= -->
+        <div id="tab-solver" class="tab-content flex-col items-center py-6 overflow-y-auto">
+            <div class="metal-panel p-8 w-full max-w-3xl">
+                <h2 class="text-2xl font-bold text-[var(--accent-gold)] mb-2"><i class="fa-solid fa-robot mr-2"></i>Intelligent Problem Assistant</h2>
+                <p class="text-sm text-gray-400 mb-6 border-b border-gray-700 pb-4">Enter known parameters to calculate theoretical quantum limits.</p>
+                
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <div class="metal-inset p-4">
+                        <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Given Variable</label>
+                        <select id="solver-type" class="w-full bg-black border border-gray-600 text-white p-2 rounded text-sm mb-4 outline-none focus:border-[var(--accent-cyan)]">
+                            <option value="dx">Position Uncertainty (Δx)</option>
+                            <option value="dp">Momentum Uncertainty (Δp)</option>
+                        </select>
+                        <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Value</label>
+                        <input type="number" id="solver-val" value="1.0" class="w-full bg-black border border-gray-600 text-white p-2 rounded text-sm font-mono outline-none focus:border-[var(--accent-cyan)]">
+                        <p class="text-[10px] text-gray-500 mt-1">Note: Using natural units (\(\hbar = 1\)) for simplicity in demonstration.</p>
+                    </div>
+                    
+                    <div class="flex flex-col justify-center gap-3">
+                        <button onclick="getHint()" class="btn-metallic py-3 rounded font-bold text-[var(--accent-cyan)]"><i class="fa-regular fa-lightbulb mr-2"></i> GET HINT</button>
+                        <button onclick="solveProblem()" class="btn-metallic py-3 rounded font-bold text-white"><i class="fa-solid fa-calculator mr-2"></i> SHOW SOLUTION</button>
+                        <button onclick="clearSolver()" class="bg-transparent border border-gray-600 text-gray-400 py-2 rounded text-xs hover:text-white mt-4 transition">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Logic Output Area -->
+                <div id="solver-output" class="hidden metal-inset p-6 bg-black/60 font-mono text-sm leading-relaxed border-l-4 border-l-[var(--accent-cyan)]">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 5: WHAT IF? (Micro vs Macro) ================= -->
+        <div id="tab-whatif" class="tab-content flex-col items-center py-6 overflow-y-auto">
+            <div class="metal-panel p-8 w-full max-w-4xl">
+                <h2 class="text-2xl font-bold text-white mb-2"><i class="fa-solid fa-flask text-[var(--accent-violet)] mr-2"></i>"What If?" Exploration</h2>
+                <p class="text-sm text-gray-400 mb-6 border-b border-gray-700 pb-4">Compare quantum effects across different scales (Real SI Units used here).</p>
+
+                <div class="flex gap-4 mb-6">
+                    <button class="flex-1 btn-metallic p-3 rounded" onclick="compareScale('electron')">
+                        <div class="font-bold text-[var(--accent-cyan)]">Electron</div>
+                        <div class="text-[10px] text-gray-400 mt-1">Mass: \(9.1 \times 10^{-31}\) kg</div>
+                    </button>
+                    <button class="flex-1 btn-metallic p-3 rounded" onclick="compareScale('proton')">
+                        <div class="font-bold text-white">Proton</div>
+                        <div class="text-[10px] text-gray-400 mt-1">Mass: \(1.67 \times 10^{-27}\) kg</div>
+                    </button>
+                    <button class="flex-1 btn-metallic p-3 rounded" onclick="compareScale('dust')">
+                        <div class="font-bold text-[var(--accent-gold)]">Dust Particle</div>
+                        <div class="text-[10px] text-gray-400 mt-1">Mass: \(10^{-9}\) kg</div>
+                    </button>
+                    <button class="flex-1 btn-metallic p-3 rounded" onclick="compareScale('human')">
+                        <div class="font-bold text-[var(--accent-danger)]">Human</div>
+                        <div class="text-[10px] text-gray-400 mt-1">Mass: \(70\) kg</div>
+                    </button>
+                </div>
+
+                <div class="metal-inset p-1 mb-6">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-[#151b2b] text-[var(--text-muted)] uppercase text-[10px] tracking-wider">
+                            <tr>
+                                <th class="p-3">Property</th>
+                                <th class="p-3 text-right">Value (Confined to \(\Delta x = 1\) nm)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="whatif-table" class="text-gray-300">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="whatif-conclusion" class="p-4 bg-[rgba(0,240,255,0.05)] border border-[rgba(0,240,255,0.2)] rounded text-sm text-[var(--accent-cyan)]">
+                    Select an object above to see why quantum mechanics is largely ignored in macroscopic physics.
+                </div>
+                
+                <!-- Additional Conjugate Pairs info -->
+                <div class="mt-8 border-t border-gray-700 pt-6">
+                    <h3 class="text-lg font-bold text-white mb-3">Other Conjugate Variable Pairs</h3>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="metal-inset p-3">
+                            <strong class="text-[var(--accent-gold)]">Energy - Time</strong><br>
+                            \( \Delta E \Delta t \gtrsim \hbar / 2 \)<br>
+                            <span class="text-xs text-gray-400 block mt-1">Virtual particles can borrow energy from the vacuum for a very short duration.</span>
+                        </div>
+                        <div class="metal-inset p-3">
+                            <strong class="text-[var(--accent-violet)]">Angular Position - Ang. Momentum</strong><br>
+                            \( \Delta \theta \Delta L \ge \hbar / 2 \)<br>
+                            <span class="text-xs text-gray-400 block mt-1">A precisely defined angular momentum implies a completely undefined angular position.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 6: QUIZ ================= -->
+        <div id="tab-quiz" class="tab-content flex-col items-center py-6 overflow-y-auto">
+            <div class="metal-panel p-8 w-full max-w-2xl relative">
+                <!-- Progress Ring background -->
+                <div class="absolute top-4 right-4 w-12 h-12 rounded-full border-4 border-gray-700 flex items-center justify-center">
+                    <span id="quiz-score-display" class="text-xs font-bold text-white">0/5</span>
+                </div>
+
+                <h2 class="text-2xl font-bold text-white mb-6"><i class="fa-solid fa-check-double text-green-400 mr-2"></i>Concept Mastery Quiz</h2>
+                
+                <div id="quiz-container">
+                    <div id="quiz-question" class="text-lg text-[var(--accent-cyan)] font-semibold mb-6">Question text goes here.</div>
+                    <div id="quiz-options" class="flex flex-col gap-3 mb-6">
+                        <!-- Options generated by JS -->
+                    </div>
+                    
+                    <div id="quiz-feedback" class="hidden p-4 rounded text-sm mb-6 border"></div>
+                    
+                    <button id="quiz-next-btn" onclick="nextQuiz()" class="hidden btn-metallic py-2 px-6 rounded font-bold text-white float-right">Next Question <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                </div>
+                
+                <div id="quiz-results" class="hidden text-center">
+                    <h3 class="text-3xl font-bold text-[var(--accent-gold)] mb-4">Quiz Complete!</h3>
+                    <p class="text-lg mb-6">Your score: <span id="final-score" class="font-bold text-white"></span></p>
+                    <button onclick="resetQuiz()" class="btn-metallic py-2 px-6 rounded font-bold text-white">Retry Quiz</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="metal-panel rounded-none border-b-0 border-l-0 border-r-0 border-t border-gray-700 px-6 py-2 flex justify-between items-center text-[10px] text-gray-500 uppercase tracking-widest z-10">
+        <div><i class="fa-solid fa-shield-halved mr-1"></i> Interactive Quantum Physics Simulation</div>
+        <div class="text-gray-400">Developed by <span class="font-bold text-[var(--accent-cyan)]">Dr. PATHAK</span> with the help of AI</div>
+    </footer>
+
+    <script>
+        // ================= STATE & GLOBALS =================
+        const State = {
+            hbar: 1.0, // Natural units for 3D visualization
+            hbarSI: 1.0545718e-34, // SI Units for exact calculations
+            dx: 1.0,
+            dp: 0.5,
+            product: 0.5,
+            time: 0,
+            fourierComponents: 10,
+            autoRotate: true
+        };
+
+        const hintState = { step: 0 };
+        const solverVals = { dx: 1.0, dp: 0.5 };
+
+        // ================= UI MANAGEMENT =================
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            // Resize canvas if needed
+            if (tabId === 'tab-simulation') {
+                window.dispatchEvent(new Event('resize'));
+            } else if (tabId === 'tab-fourier') {
+                fourierChart.resize();
+            }
+        }
+
+        function toggleAccordion(btn) {
+            const content = btn.nextElementSibling;
+            const icon = btn.querySelector('i');
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            }
+        }
+
+        // ================= THREE.JS SETUP =================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        // Dark space theme
+        scene.fog = new THREE.FogExp2(0x000000, 0.04);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 4, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = State.autoRotate;
+        controls.autoRotateSpeed = 1.0;
+
+        // Grids & Axes
+        const gridHelper = new THREE.GridHelper(30, 30, 0x3b455e, 0x111520);
+        gridHelper.position.y = -2;
+        scene.add(gridHelper);
+
+        // Wave Packet (Ribbon)
+        const wavePoints = 500;
+        const waveGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(wavePoints * 3);
+        const colors = new Float32Array(wavePoints * 3);
+        waveGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        waveGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const waveMat = new THREE.LineBasicMaterial({
+            vertexColors: true, linewidth: 2, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.9
+        });
+        const waveLine = new THREE.Line(waveGeo, waveMat);
+        scene.add(waveLine);
+
+        // Probability Cloud
+        const particleCount = 2000;
+        const cloudGeo = new THREE.BufferGeometry();
+        const cloudPos = new Float32Array(particleCount * 3);
+        const cloudCol = new Float32Array(particleCount * 3);
+        
+        // Generate soft sprite for particles
+        const canvasSprite = document.createElement('canvas');
+        canvasSprite.width = 16; canvasSprite.height = 16;
+        const ctxSprite = canvasSprite.getContext('2d');
+        const grad = ctxSprite.createRadialGradient(8, 8, 0, 8, 8, 8);
+        grad.addColorStop(0, 'rgba(0, 240, 255, 1)');
+        grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+        ctxSprite.fillStyle = grad; ctxSprite.fillRect(0,0,16,16);
+        const texSprite = new THREE.CanvasTexture(canvasSprite);
+
+        const cloudMat = new THREE.PointsMaterial({
+            size: 0.4, map: texSprite, blending: THREE.AdditiveBlending,
+            depthWrite: false, transparent: true, vertexColors: true
+        });
+        const cloudPoints = new THREE.Points(cloudGeo, cloudMat);
+        scene.add(cloudPoints);
+
+        // ================= PHYSICS & UPDATE LOGIC =================
+        const sliderDx = document.getElementById('sim-dx-slider');
+        const valDx = document.getElementById('metric-dx');
+        const valDp = document.getElementById('metric-dp');
+        const valProd = document.getElementById('metric-product');
+        const conceptLabel = document.getElementById('conceptual-label');
+
+        function updatePhysics() {
+            State.dx = parseFloat(sliderDx.value);
+            // Relation: dx * dp = hbar/2 -> dp = hbar / (2*dx)
+            State.dp = State.hbar / (2 * State.dx);
+            State.product = State.dx * State.dp;
+
+            // UI Update
+            valDx.textContent = State.dx.toFixed(3);
+            valDp.textContent = State.dp.toFixed(3);
+            valProd.textContent = State.product.toFixed(3);
+
+            if (State.dx < 0.5) {
+                conceptLabel.innerHTML = "<span class='text-[var(--accent-cyan)]'>Narrow Position</span> → <span class='text-[var(--accent-violet)]'>Broad Momentum</span><br>Highly localized particle requires many wave frequencies.";
+            } else if (State.dx > 2.0) {
+                conceptLabel.innerHTML = "<span class='text-[var(--accent-cyan)]'>Broad Position</span> → <span class='text-[var(--accent-violet)]'>Narrow Momentum</span><br>Approaching a plane wave with well-defined momentum.";
+            } else {
+                conceptLabel.innerHTML = "Intermediate State<br>Balanced conjugate uncertainties.";
+            }
+
+            update3DGeometry();
+            updateCharts();
+        }
+
+        function update3DGeometry() {
+            const xRange = 15;
+            const k0 = 4.0; // Carrier wave number
+            
+            // 1. Update Wave Ribbon
+            const pAttr = waveLine.geometry.attributes.position;
+            const cAttr = waveLine.geometry.attributes.color;
+            for(let i=0; i<wavePoints; i++) {
+                const t = i/(wavePoints-1);
+                const x = (t - 0.5) * xRange;
+                
+                // Gaussian envelope based on dx
+                const envelope = Math.exp(-(x*x)/(4*State.dx*State.dx));
+                
+                // Phase evolution
+                const phase = k0 * x - State.time * 3.0;
+                
+                // Complex spiral
+                const y = envelope * Math.cos(phase) * 1.5;
+                const z = envelope * Math.sin(phase) * 1.5;
+                
+                pAttr.setXYZ(i, x, y, z);
+                
+                // Color mapping: Inner bright cyan, outer purple
+                cAttr.setXYZ(i, 0.7 - envelope*0.7, 0.2 + envelope*0.8, 1.0);
+            }
+            pAttr.needsUpdate = true; cAttr.needsUpdate = true;
+
+            // 2. Update Probability Cloud
+            const cpAttr = cloudPoints.geometry.attributes.position;
+            const ccAttr = cloudPoints.geometry.attributes.color;
+            for(let i=0; i<particleCount; i++) {
+                // Box-Muller transform for normal distribution in X
+                let u=0, v=0;
+                while(u===0) u=Math.random(); while(v===0) v=Math.random();
+                const num = Math.sqrt(-2.0*Math.log(u)) * Math.cos(2.0*Math.PI*v);
+                
+                // Map to dx
+                const x = num * Math.sqrt(2) * State.dx;
+                
+                // Radial scatter based on envelope
+                const theta = Math.random() * Math.PI * 2;
+                const r = Math.random() * Math.exp(-(x*x)/(4*State.dx*State.dx)) * 1.5;
+                
+                cpAttr.setXYZ(i, x, r*Math.cos(theta), r*Math.sin(theta));
+                
+                // Opacity/Color mix based on radius
+                const intensity = 1.0 - (r/1.5);
+                ccAttr.setXYZ(i, 0.0, intensity, 1.0);
+            }
+            cpAttr.needsUpdate = true; ccAttr.needsUpdate = true;
+        }
+
+        sliderDx.addEventListener('input', updatePhysics);
+
+        // Controls
+        function resetCamera() { camera.position.set(0, 4, 12); controls.target.set(0,0,0); }
+        function toggleAutoRotate() {
+            State.autoRotate = !State.autoRotate;
+            controls.autoRotate = State.autoRotate;
+            document.getElementById('btn-autorotate').classList.toggle('text-[var(--accent-cyan)]');
+        }
+        function loadPreset(val) {
+            sliderDx.value = val;
+            updatePhysics();
+        }
+
+        // ================= CHART.JS SETUP =================
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = 'Segoe UI';
+        Chart.defaults.plugins.legend.display = false;
+        Chart.defaults.animation = false; // Real-time
+
+        const ctxPos = document.getElementById('chart-pos').getContext('2d');
+        const chartPos = new Chart(ctxPos, {
+            type: 'line',
+            data: { labels: Array.from({length:101}, (_,i)=>(i-50)/10), datasets: [{ data:[], borderColor: '#00f0ff', backgroundColor: 'rgba(0, 240, 255, 0.2)', fill: true, tension: 0.4, pointRadius: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: {display: true, text: 'Position x'} }, y: { display: false, min: 0, max: 1.5 } } }
+        });
+
+        const ctxMom = document.getElementById('chart-mom').getContext('2d');
+        const chartMom = new Chart(ctxMom, {
+            type: 'line',
+            data: { labels: Array.from({length:101}, (_,i)=>(i-50)/10), datasets: [{ data:[], borderColor: '#b535ff', backgroundColor: 'rgba(181, 53, 255, 0.2)', fill: true, tension: 0.4, pointRadius: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: {display: true, text: 'Momentum p'} }, y: { display: false, min: 0, max: 1.5 } } }
+        });
+
+        // Fourier Chart (Tab 3)
+        const ctxFour = document.getElementById('chart-fourier').getContext('2d');
+        const fourierChart = new Chart(ctxFour, {
+            type: 'line',
+            data: { labels: Array.from({length:200}, (_,i)=>(i-100)/10), datasets: [] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false, min: -2.5, max: 2.5 } } }
+        });
+
+        function updateCharts() {
+            // Update Pos/Mom PDFs
+            const dataX = [], dataP = [];
+            for(let i=0; i<=100; i++) {
+                const x = (i-50)/10;
+                // PDF |psi|^2 ~ exp(-x^2 / 2dx^2). Normalized visually.
+                dataX.push( Math.exp(-(x*x)/(2*State.dx*State.dx)) * Math.min(1.5, 0.6/State.dx) );
+                const p = x;
+                dataP.push( Math.exp(-(p*p)/(2*State.dp*State.dp)) * Math.min(1.5, 0.6/State.dp) );
+            }
+            chartPos.data.datasets[0].data = dataX;
+            chartPos.update();
+            chartMom.data.datasets[0].data = dataP;
+            chartMom.update();
+        }
+
+        // Fourier Logic
+        document.getElementById('fourier-slider').addEventListener('input', (e) => {
+            State.fourierComponents = parseInt(e.target.value);
+            document.getElementById('fourier-count').innerText = State.fourierComponents;
+        });
+
+        function renderFourier() {
+            if(!document.getElementById('tab-fourier').classList.contains('active')) return;
+            
+            const datasets = [];
+            const sumData = new Array(200).fill(0);
+            const numC = State.fourierComponents;
+            const k0 = 2.0;
+            const dk = numC * 0.15; // Spread of frequencies
+            
+            for(let i=0; i<numC; i++) {
+                let k = k0;
+                if(numC > 1) {
+                    const t = (i/(numC-1)) - 0.5;
+                    k = k0 + t*dk;
+                }
+                const weight = Math.exp(-Math.pow(k-k0,2)/(dk*dk/4 + 0.1)); // Gaussian weights
+                
+                const comp = [];
+                for(let j=0; j<200; j++) {
+                    const x = (j-100)/10;
+                    const val = weight * Math.cos(k*x - State.time*4);
+                    comp.push(val);
+                    sumData[j] += val;
+                }
+                
+                // Add individual faint waves (limit rendering for performance if too many)
+                if (numC <= 20 || i % Math.ceil(numC/20) === 0) {
+                    datasets.push({
+                        data: comp, borderColor: `rgba(100,100,255,${0.1 + 0.2*weight})`,
+                        borderWidth: 1, tension: 0.4, pointRadius: 0
+                    });
+                }
+            }
+            
+            // Normalize sum visually
+            if(numC > 0) {
+                const max = Math.max(...sumData.map(Math.abs));
+                for(let j=0; j<200; j++) sumData[j] = (sumData[j]/max) * 2.0;
+            }
+            
+            datasets.push({
+                label: 'Wave Packet (Sum)', data: sumData,
+                borderColor: '#00f0ff', borderWidth: 3, tension: 0.4, pointRadius: 0
+            });
+            
+            fourierChart.data.datasets = datasets;
+            fourierChart.update();
+        }
+
+        // ================= PROBLEM SOLVER =================
+        function getHint() {
+            const out = document.getElementById('solver-output');
+            out.classList.remove('hidden');
+            hintState.step++;
+            
+            const type = document.getElementById('solver-type').value;
+            let html = out.innerHTML;
+            
+            if(hintState.step === 1) html += `<div class="mb-2 text-gray-400"><strong>Hint 1:</strong> Identify the conjugate variables. Here, it is Position (\(x\)) and Momentum (\(p\)).</div>`;
+            else if(hintState.step === 2) html += `<div class="mb-2 text-gray-400"><strong>Hint 2:</strong> The Uncertainty Principle equation is \( \Delta x \Delta p \ge \hbar/2 \).</div>`;
+            else if(hintState.step === 3) {
+                if(type === 'dx') html += `<div class="mb-2 text-gray-400"><strong>Hint 3:</strong> Rearrange to solve for minimum \(\Delta p\): \( \Delta p \ge \hbar / (2 \Delta x) \).</div>`;
+                else html += `<div class="mb-2 text-gray-400"><strong>Hint 3:</strong> Rearrange to solve for minimum \(\Delta x\): \( \Delta x \ge \hbar / (2 \Delta p) \).</div>`;
+            }
+            else {
+                html += `<div class="mb-2 text-[var(--accent-gold)]">Click "Show Solution" for the final calculation.</div>`;
+                hintState.step = 3; // cap
+            }
+            
+            out.innerHTML = html;
+            MathJax.typesetPromise([out]); // Rerender LaTeX
+        }
+
+        function solveProblem() {
+            const out = document.getElementById('solver-output');
+            out.classList.remove('hidden');
+            const type = document.getElementById('solver-type').value;
+            const val = parseFloat(document.getElementById('solver-val').value);
+            
+            if(isNaN(val) || val <= 0) {
+                out.innerHTML = `<span class="text-[var(--accent-danger)]">Please enter a valid positive number.</span>`;
+                return;
+            }
+
+            let res, html = `<h4 class="font-bold text-white mb-3 uppercase tracking-widest border-b border-gray-700 pb-1">Step-by-Step Solution</h4>`;
+            html += `<div class="mb-2 text-gray-300"><strong>1. State Knowns:</strong> Given ${type === 'dx' ? '\\(\\Delta x\\)' : '\\(\\Delta p\\)'} = ${val}</div>`;
+            html += `<div class="mb-2 text-gray-300"><strong>2. Equation:</strong> \\( \\Delta x \\Delta p \\ge \\hbar/2 \\)</div>`;
+            
+            if(type === 'dx') {
+                res = 1.0 / (2*val);
+                html += `<div class="mb-2 text-gray-300"><strong>3. Substitute (using natural units \\(\\hbar=1\\)):</strong><br> \\( \\Delta p_{min} = 1 / (2 \\times ${val}) \\)</div>`;
+                html += `<div class="mt-4 p-3 bg-[rgba(181,53,255,0.1)] border border-[var(--accent-violet)] rounded text-lg">\\( \\Delta p \\ge ${res.toFixed(4)} \\)</div>`;
+                html += `<div class="mt-3 text-xs text-gray-400"><strong>Physical Interpretation:</strong> A quantum state localized to \\(\\Delta x = ${val}\\) MUST have a momentum spread of at least ${res.toFixed(4)}. Attempting to force a smaller momentum spread violates quantum mechanics.</div>`;
+            } else {
+                res = 1.0 / (2*val);
+                html += `<div class="mb-2 text-gray-300"><strong>3. Substitute (using natural units \\(\\hbar=1\\)):</strong><br> \\( \\Delta x_{min} = 1 / (2 \\times ${val}) \\)</div>`;
+                html += `<div class="mt-4 p-3 bg-[rgba(0,240,255,0.1)] border border-[var(--accent-cyan)] rounded text-lg">\\( \\Delta x \\ge ${res.toFixed(4)} \\)</div>`;
+                html += `<div class="mt-3 text-xs text-gray-400"><strong>Physical Interpretation:</strong> A quantum state with a highly defined momentum (spread of ${val}) must be delocalized in space by at least ${res.toFixed(4)}.</div>`;
+            }
+            
+            out.innerHTML = html;
+            hintState.step = 0;
+            MathJax.typesetPromise([out]);
+        }
+
+        function clearSolver() {
+            document.getElementById('solver-output').classList.add('hidden');
+            document.getElementById('solver-output').innerHTML = '';
+            hintState.step = 0;
+        }
+
+        // ================= WHAT IF (Micro vs Macro) =================
+        function compareScale(type) {
+            const tbody = document.getElementById('whatif-table');
+            const conc = document.getElementById('whatif-conclusion');
+            const hbar = State.hbarSI;
+            const dx = 1e-9; // 1 nm confinement
+            const minDp = hbar / (2 * dx); // kg m/s
+            
+            let mass, name, color;
+            if(type === 'electron') { mass = 9.1e-31; name = "Electron"; color = "var(--accent-cyan)"; }
+            else if(type === 'proton') { mass = 1.67e-27; name = "Proton"; color = "white"; }
+            else if(type === 'dust') { mass = 1e-9; name = "Dust Particle"; color = "var(--accent-gold)"; }
+            else { mass = 70; name = "Human"; color = "var(--accent-danger)"; }
+
+            const dv = minDp / mass; // Velocity uncertainty = dp / m
+
+            let html = `
+                <tr class="border-b border-gray-800"><td class="p-3">Mass (\\(m\\))</td><td class="p-3 text-right font-mono">${mass.toExponential(2)} kg</td></tr>
+                <tr class="border-b border-gray-800"><td class="p-3">Position Uncert. (\\(\\Delta x\\))</td><td class="p-3 text-right font-mono">1.00e-9 m (1 nm)</td></tr>
+                <tr class="border-b border-gray-800"><td class="p-3">Min Momentum Uncert. (\\(\\Delta p\\))</td><td class="p-3 text-right font-mono text-[var(--accent-violet)]">${minDp.toExponential(2)} kg·m/s</td></tr>
+                <tr><td class="p-3 text-[var(--accent-cyan)] font-bold">Velocity Uncert. (\\(\\Delta v = \\Delta p / m\\))</td><td class="p-3 text-right font-mono text-[var(--accent-cyan)] font-bold">${dv.toExponential(2)} m/s</td></tr>
+            `;
+            tbody.innerHTML = html;
+
+            let msg = "";
+            if(type === 'electron') msg = `For an electron confined to 1 nm, the velocity uncertainty is massive (~58 km/s)! Quantum effects dominate its behavior.`;
+            else if(type === 'proton') msg = `A proton is much heavier, so its velocity uncertainty drops to ~31 m/s. Still significant, but less frantic than an electron.`;
+            else if(type === 'dust') msg = `For a microscopic dust grain, the velocity uncertainty is \(~10^{-16}\) m/s. It is essentially zero. This is why dust appears to have a definite classical position and momentum.`;
+            else msg = `For a human, the velocity uncertainty is \(~10^{-25}\) m/s. It would take longer than the age of the universe for a human to visibly "blur" out of position due to quantum uncertainty.`;
+            
+            conc.innerHTML = `<span style="color:${color}; font-weight:bold">${name}:</span> ${msg}`;
+            
+            MathJax.typesetPromise([tbody, conc]);
+        }
+
+        // ================= QUIZ LOGIC =================
+        const quizData = [
+            { q: "If the uncertainty in position (Δx) decreases, what MUST happen to the minimum uncertainty in momentum (Δp)?", opts: ["It decreases", "It remains constant", "It increases", "It fluctuates randomly"], a: 2, exp: "Because ΔxΔp ≥ ħ/2, if Δx becomes smaller, Δp must become larger to maintain the product." },
+            { q: "Is the Heisenberg Uncertainty Principle solely a result of clumsy experimental equipment?", opts: ["Yes, better microscopes will eventually bypass it.", "No, it is a fundamental, intrinsic property of quantum states.", "Yes, but only for subatomic particles.", "No, it is due to gravity."], a: 1, exp: "It is an intrinsic mathematical property of wave mechanics (Fourier transforms) and non-commuting operators, independent of measurement apparatus." },
+            { q: "To create a very narrow wave packet in space, you must superimpose:", opts: ["A single pure sine wave.", "Waves of all the same wavelength.", "A broad spectrum of different wavelengths (momenta).", "Waves with zero amplitude."], a: 2, exp: "Fourier analysis dictates that synthesizing a localized sharp spike requires adding together a wide range of frequencies/wavelengths." },
+            { q: "Why don't we notice the Uncertainty Principle in everyday macroscopic objects (like a baseball)?", opts: ["Because Macroscopic objects don't follow physics.", "Because Planck's constant (ħ) is extremely small compared to everyday scales.", "Because they have zero momentum.", "Because observation freezes them."], a: 1, exp: "The value of ħ is ~10⁻³⁴ J·s. For a heavy object like a baseball, the resulting velocity uncertainty (Δv = Δp/m) is unimaginably small." },
+            { q: "Which of the following is ALSO a valid conjugate variable pair bounded by an uncertainty relation?", opts: ["Charge and Mass", "Position and Spin", "Energy and Time", "Velocity and Acceleration"], a: 2, exp: "Energy and Time (ΔEΔt ≳ ħ/2) form a fundamental conjugate pair in quantum mechanics." }
+        ];
+
+        let currentQ = 0; let score = 0;
+
+        function loadQuiz() {
+            const q = quizData[currentQ];
+            document.getElementById('quiz-question').innerText = `${currentQ+1}. ${q.q}`;
+            const optsDiv = document.getElementById('quiz-options');
+            optsDiv.innerHTML = '';
+            
+            q.opts.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left p-4 btn-metallic rounded transition-colors';
+                btn.innerText = opt;
+                btn.onclick = () => checkQuiz(idx, btn);
+                optsDiv.appendChild(btn);
+            });
+            
+            document.getElementById('quiz-feedback').classList.add('hidden');
+            document.getElementById('quiz-next-btn').classList.add('hidden');
+            document.getElementById('quiz-score-display').innerText = `${score}/5`;
+        }
+
+        function checkQuiz(selIdx, btnClicked) {
+            const q = quizData[currentQ];
+            const btns = document.getElementById('quiz-options').children;
+            for(let b of btns) { b.disabled = true; b.classList.add('opacity-50'); }
+            
+            const fb = document.getElementById('quiz-feedback');
+            fb.classList.remove('hidden');
+            
+            if(selIdx === q.a) {
+                btnClicked.classList.replace('opacity-50', 'bg-green-900/50');
+                btnClicked.style.borderColor = 'green';
+                score++;
+                fb.className = 'p-4 rounded text-sm mb-6 border border-green-500 bg-green-900/20';
+                fb.innerHTML = `<strong class="text-green-400"><i class="fa-solid fa-check"></i> Correct!</strong> <br><span class="text-gray-300 mt-1 block">${q.exp}</span>`;
+            } else {
+                btnClicked.classList.replace('opacity-50', 'bg-red-900/50');
+                btnClicked.style.borderColor = 'red';
+                btns[q.a].classList.replace('opacity-50', 'bg-green-900/50');
+                btns[q.a].style.borderColor = 'green';
+                fb.className = 'p-4 rounded text-sm mb-6 border border-red-500 bg-red-900/20';
+                fb.innerHTML = `<strong class="text-red-400"><i class="fa-solid fa-xmark"></i> Incorrect.</strong> <br><span class="text-gray-300 mt-1 block">${q.exp}</span>`;
+            }
+            
+            document.getElementById('quiz-score-display').innerText = `${score}/5`;
+            
+            const nxtBtn = document.getElementById('quiz-next-btn');
+            nxtBtn.classList.remove('hidden');
+            if(currentQ === quizData.length - 1) nxtBtn.innerHTML = 'Finish Quiz <i class="fa-solid fa-flag-checkered ml-1"></i>';
+        }
+
+        function nextQuiz() {
+            currentQ++;
+            if(currentQ < quizData.length) {
+                loadQuiz();
+            } else {
+                document.getElementById('quiz-container').classList.add('hidden');
+                document.getElementById('quiz-results').classList.remove('hidden');
+                document.getElementById('final-score').innerText = `${score} / 5`;
+            }
+        }
+
+        function resetQuiz() {
+            currentQ = 0; score = 0;
+            document.getElementById('quiz-container').classList.remove('hidden');
+            document.getElementById('quiz-results').classList.add('hidden');
+            loadQuiz();
+        }
+
+        // ================= ANIMATION LOOP =================
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            State.time += delta;
+
+            if (document.getElementById('tab-simulation').classList.contains('active')) {
+                controls.update();
+                update3DGeometry(); // continuously update phase
+                renderer.render(scene, camera);
+            }
+            
+            if (document.getElementById('tab-fourier').classList.contains('active')) {
+                renderFourier(); // animate Fourier waves
+            }
+        }
+
+        // Window resize handling
+        window.addEventListener('resize', () => {
+            if (document.getElementById('tab-simulation').classList.contains('active')) {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        });
+
+        // Initialize
+        updatePhysics();
+        loadQuiz();
+        animate();
+        
+        // Initial setup for WHAT IF table
+        compareScale('electron');
+    </script>
+</body>
+</html>

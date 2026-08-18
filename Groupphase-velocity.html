@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Wave Mechanics: Phase vs Group Velocity</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --panel-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-red: #f43f5e;
+            --accent-green: #10b981;
+            --border: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 1rem;
+            gap: 1rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .controls-panel {
+            width: 320px;
+            background-color: var(--panel-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            overflow-y: auto;
+            max-height: calc(100vh - 80px);
+        }
+
+        .main-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .canvas-container {
+            background-color: #000;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            position: relative;
+            flex: 1;
+            min-height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .stats-panel {
+            background-color: var(--panel-bg);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.2);
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: bold;
+            font-family: monospace;
+            margin-top: 0.25rem;
+        }
+        
+        .val-blue { color: var(--accent-blue); }
+        .val-red { color: var(--accent-red); }
+
+        .theory-panel {
+            background-color: var(--panel-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            line-height: 1.6;
+        }
+
+        .theory-panel h2 {
+            margin-bottom: 1rem;
+            color: var(--accent-blue);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .theory-panel p, .theory-panel ul {
+            margin-bottom: 1rem;
+            color: #cbd5e1;
+        }
+        
+        .theory-panel ul {
+            padding-left: 1.5rem;
+        }
+
+        .math {
+            font-family: 'Cambria Math', 'Times New Roman', serif;
+            font-style: italic;
+            background: rgba(0,0,0,0.2);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+        }
+
+        /* Form Controls */
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .val-display {
+            font-size: 0.85rem;
+            color: var(--accent-blue);
+            font-family: monospace;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        select, button {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:hover, button:hover {
+            border-color: var(--accent-blue);
+        }
+
+        button {
+            background-color: var(--border);
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--accent-blue);
+            color: #000;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .checkbox-group input {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-blue);
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 0.5rem 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-group button {
+            flex: 1;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            .controls-panel {
+                width: 100%;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Quantum Matter Waves: Phase vs Group Velocity</h1>
+        <p>Interactive simulation of wave packets and dispersion relations</p>
+    </header>
+
+    <div class="container">
+        <!-- Controls Panel -->
+        <div class="controls-panel">
+            <div class="control-group">
+                <label>Physics Model</label>
+                <select id="simMode">
+                    <option value="quantum">Free Quantum Particle (Matter Wave)</option>
+                    <option value="linear">Light / Sound (Non-dispersive)</option>
+                </select>
+            </div>
+
+            <hr>
+
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Central Wave Number (<span class="math">k₀</span>)</label>
+                    <span class="val-display" id="valK0">5.0</span>
+                </div>
+                <input type="range" id="k0" min="1" max="15" step="0.1" value="6.0">
+            </div>
+
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Wave Packet Width (<span class="math">Δk</span>)</label>
+                    <span class="val-display" id="valDk">0.6</span>
+                </div>
+                <input type="range" id="dk" min="0.1" max="2.0" step="0.05" value="0.6">
+            </div>
+
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Particle Mass (<span class="math">m</span>)</label>
+                    <span class="val-display" id="valM">1.0</span>
+                </div>
+                <input type="range" id="mass" min="0.5" max="5.0" step="0.1" value="1.0">
+            </div>
+
+            <hr>
+
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Animation Speed</label>
+                    <span class="val-display" id="valSpeed">1.0x</span>
+                </div>
+                <input type="range" id="speed" min="0" max="3" step="0.1" value="1.0">
+            </div>
+
+            <div class="btn-group">
+                <button id="btnPlayPause">Pause</button>
+                <button id="btnReset">Reset Position</button>
+            </div>
+
+            <hr>
+
+            <label class="checkbox-group">
+                <input type="checkbox" id="chkCarrier" checked>
+                Show Carrier Wave (Real part)
+            </label>
+            <label class="checkbox-group">
+                <input type="checkbox" id="chkEnvelope" checked>
+                <span style="color: var(--accent-red)">Show Wave Envelope</span>
+            </label>
+            <label class="checkbox-group">
+                <input type="checkbox" id="chkPhaseMarker" checked>
+                <span style="color: var(--accent-blue)">Track Phase Velocity (vₚ)</span>
+            </label>
+            <label class="checkbox-group">
+                <input type="checkbox" id="chkGroupMarker" checked>
+                <span style="color: var(--accent-red)">Track Group Velocity (v_g)</span>
+            </label>
+
+            <button id="btnExport" style="margin-top: auto;">Export Visualization</button>
+        </div>
+
+        <!-- Main Visualization Area -->
+        <div class="main-panel">
+            <div class="canvas-container" id="canvasWrap">
+                <canvas id="simCanvas"></canvas>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stat-box">
+                    <div class="stat-label">Phase Velocity (vₚ = ω/k)</div>
+                    <div class="stat-value val-blue" id="dispVp">0.00</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Carrier wave speed</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Group Velocity (v_g = dω/dk)</div>
+                    <div class="stat-value val-red" id="dispVg">0.00</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Wave packet / Particle speed</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Angular Frequency (ω)</div>
+                    <div class="stat-value" id="dispW">0.00</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">E = ℏω</div>
+                </div>
+            </div>
+
+            <div class="theory-panel">
+                <h2>Mathematical Framework & Physical Interpretation</h2>
+                <p>
+                    A quantum particle in motion is described not by a single wave, but by a <strong>wave packet</strong>—a superposition of plane waves with wave numbers (<span class="math">k</span>) centered around <span class="math">k₀</span>. 
+                </p>
+                <ul>
+                    <li><strong>Phase Velocity (<span class="math" style="color: var(--accent-blue)">vₚ = ω/k</span>):</strong> The speed at which individual crests of the carrier wave propagate. For a free quantum particle (<span class="math">V=0</span>), <span class="math">vₚ = p/(2m)</span>.</li>
+                    <li><strong>Group Velocity (<span class="math" style="color: var(--accent-red)">v_g = dω/dk</span>):</strong> The speed at which the overall envelope (the wave packet) propagates. This corresponds to the classical <strong>particle velocity</strong> (<span class="math">v = p/m</span>).</li>
+                </ul>
+                <p>
+                    <strong>The Quantum Anomaly:</strong> In a dispersive medium like the quantum vacuum for massive particles, the dispersion relation is non-linear: <span class="math">ω(k) = \hbar k² / (2m)</span>. Taking the derivative reveals that <span class="math" style="color: var(--accent-red)">v_g</span> = <span class="math">2 ×</span> <span class="math" style="color: var(--accent-blue)">vₚ</span>. 
+                    <br><br>
+                    <em>Observe the simulation carefully:</em> The blue carrier waves appear to be born at the front of the red envelope, travel backward relative to the envelope, and disappear at the back! The particle itself moves with the red envelope. Furthermore, due to the non-linear dispersion relation (<span class="math">d²ω/dk² ≠ 0</span>), you will observe the wave packet slowly spreading out (delocalizing) over time.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State and Configuration ---
+        const state = {
+            k0: 6.0,
+            dk: 0.6,
+            m: 1.0,
+            mode: 'quantum', // 'quantum' or 'linear'
+            speedMultiplier: 1.0,
+            time: 0,
+            isPlaying: true,
+            
+            showCarrier: true,
+            showEnvelope: true,
+            showPhaseMarker: true,
+            showGroupMarker: true,
+
+            // Physical simulation bounds
+            xMin: -25,
+            xMax: 25,
+            
+            // Computed values
+            w0: 0,
+            vp: 0,
+            vg: 0,
+            alpha: 0 // Second derivative of omega (dispersion coefficient)
+        };
+
+        // --- DOM Elements ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrap = document.getElementById('canvasWrap');
+
+        const inputs = {
+            k0: document.getElementById('k0'),
+            dk: document.getElementById('dk'),
+            mass: document.getElementById('mass'),
+            speed: document.getElementById('speed'),
+            mode: document.getElementById('simMode'),
+            chkCarrier: document.getElementById('chkCarrier'),
+            chkEnvelope: document.getElementById('chkEnvelope'),
+            chkPhaseMarker: document.getElementById('chkPhaseMarker'),
+            chkGroupMarker: document.getElementById('chkGroupMarker')
+        };
+
+        const displays = {
+            k0: document.getElementById('valK0'),
+            dk: document.getElementById('valDk'),
+            mass: document.getElementById('valM'),
+            speed: document.getElementById('valSpeed'),
+            vp: document.getElementById('dispVp'),
+            vg: document.getElementById('dispVg'),
+            w: document.getElementById('dispW')
+        };
+
+        // --- Physics Math Engine ---
+        function updatePhysics() {
+            if (state.mode === 'quantum') {
+                // Quantum Free Particle: ω(k) = k^2 / (2m)  (Setting ℏ = 1)
+                state.w0 = (state.k0 * state.k0) / (2 * state.m);
+                state.vp = state.w0 / state.k0;       // k / 2m
+                state.vg = state.k0 / state.m;        // k / m
+                state.alpha = 1 / state.m;            // d^2ω/dk^2
+            } else {
+                // Non-dispersive (Light/Sound): ω(k) = c * k. Let 'm' slider act as wave speed 'c'
+                const c = state.m; 
+                state.w0 = c * state.k0;
+                state.vp = c;
+                state.vg = c;
+                state.alpha = 0;                      // No spreading
+            }
+
+            // Update UI Stats
+            displays.vp.textContent = state.vp.toFixed(3);
+            displays.vg.textContent = state.vg.toFixed(3);
+            displays.w.textContent = state.w0.toFixed(2);
+        }
+
+        /* Analytical exact solution for a Gaussian wave packet evolution.
+           Initial state: ψ(x,0) = exp(-x² / 4σ²) exp(i k₀ x)
+           Where variance in k-space is Δk², leading to spatial width σ = 1 / (2Δk).
+        */
+        function evaluateWavePacket(x, t) {
+            const dk = state.dk;
+            const sigma2 = 1 / (4 * dk * dk); // Initial spatial variance σ²
+            
+            // Time evolution factor parameter τ
+            const tau = (state.alpha * t) / (2 * sigma2);
+            
+            // Variance increases over time (wave packet spreading)
+            const spreadFactorSq = 1 + tau * tau;
+            const currentSigma2 = sigma2 * spreadFactorSq;
+            
+            // Position relative to group center
+            const dx = x - (state.vg * t);
+            
+            // Envelope amplitude decreases as it spreads
+            const envAmp = 1 / Math.pow(spreadFactorSq, 0.25);
+            
+            // The Gaussian envelope
+            const E = envAmp * Math.exp( - (dx * dx) / (4 * currentSigma2) );
+            
+            // The phase contains the carrier wave AND a spatial chirp term due to spreading
+            const Phi = state.k0 * x - state.w0 * t 
+                      + (tau * dx * dx) / (4 * currentSigma2) 
+                      - 0.5 * Math.atan(tau);
+            
+            return {
+                envelope: E,
+                real: E * Math.cos(Phi),
+                imag: E * Math.sin(Phi) // Available if needed
+            };
+        }
+
+        // --- Canvas Drawing & Rendering ---
+        function resizeCanvas() {
+            canvas.width = wrap.clientWidth;
+            canvas.height = wrap.clientHeight;
+        }
+
+        // Map physical (x, y) to canvas pixel coordinates
+        function mapToScreen(x, y) {
+            const scaleX = canvas.width / (state.xMax - state.xMin);
+            // Amplitude scale: Y ranges roughly from -1.5 to 1.5
+            const scaleY = canvas.height / 3; 
+            
+            const px = (x - state.xMin) * scaleX;
+            const py = canvas.height / 2 - (y * scaleY);
+            return { px, py };
+        }
+
+        function drawAxes() {
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            
+            // X-axis
+            const left = mapToScreen(state.xMin, 0);
+            const right = mapToScreen(state.xMax, 0);
+            ctx.moveTo(left.px, left.py);
+            ctx.lineTo(right.px, right.py);
+            
+            // Y-axis (at x=0)
+            const top = mapToScreen(0, 1.5);
+            const bottom = mapToScreen(0, -1.5);
+            ctx.moveTo(top.px, top.py);
+            ctx.lineTo(bottom.px, bottom.py);
+            
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#64748b';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('x = 0', top.px + 5, top.py + 15);
+            ctx.fillText('ψ(x,t)', top.px - 40, top.py + 15);
+        }
+
+        function drawSimulation() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawAxes();
+
+            const numPoints = canvas.width; // 1 point per pixel for smoothness
+            const dx = (state.xMax - state.xMin) / numPoints;
+
+            ctx.lineWidth = 2;
+
+            // Draw Envelope
+            if (state.showEnvelope) {
+                ctx.beginPath();
+                for (let i = 0; i <= numPoints; i++) {
+                    const x = state.xMin + i * dx;
+                    const result = evaluateWavePacket(x, state.time);
+                    const pt = mapToScreen(x, result.envelope);
+                    if (i === 0) ctx.moveTo(pt.px, pt.py);
+                    else ctx.lineTo(pt.px, pt.py);
+                }
+                ctx.strokeStyle = '#f43f5e'; // Accent Red
+                ctx.stroke();
+
+                // Lower envelope
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                for (let i = 0; i <= numPoints; i++) {
+                    const x = state.xMin + i * dx;
+                    const result = evaluateWavePacket(x, state.time);
+                    const pt = mapToScreen(x, -result.envelope);
+                    if (i === 0) ctx.moveTo(pt.px, pt.py);
+                    else ctx.lineTo(pt.px, pt.py);
+                }
+                ctx.strokeStyle = 'rgba(244, 63, 94, 0.5)';
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Draw Carrier Wave
+            if (state.showCarrier) {
+                ctx.beginPath();
+                for (let i = 0; i <= numPoints; i++) {
+                    const x = state.xMin + i * dx;
+                    const result = evaluateWavePacket(x, state.time);
+                    const pt = mapToScreen(x, result.real);
+                    if (i === 0) ctx.moveTo(pt.px, pt.py);
+                    else ctx.lineTo(pt.px, pt.py);
+                }
+                ctx.strokeStyle = '#38bdf8'; // Accent Blue
+                ctx.stroke();
+            }
+
+            // Draw Markers
+            // 1. Group Velocity Marker (Center of packet)
+            if (state.showGroupMarker) {
+                const x_g = state.vg * state.time;
+                const result = evaluateWavePacket(x_g, state.time);
+                const pt = mapToScreen(x_g, result.envelope); // Draw at top of envelope
+                
+                ctx.beginPath();
+                ctx.arc(pt.px, pt.py, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = '#f43f5e';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // Label
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px monospace';
+                ctx.fillText('v_g', pt.px - 10, pt.py - 10);
+            }
+
+            // 2. Phase Velocity Marker
+            // We want to track a specific peak of the carrier wave. 
+            // The phase is roughly k0*x - w0*t. We track the point where phase = 0.
+            // x_p = (w0/k0)*t = vp * t.
+            if (state.showPhaseMarker) {
+                // To keep the marker visible, we track the peak that is currently 
+                // closest to the group center, or just track one specific peak.
+                // Let's track a set of peaks separated by wavelength lambda = 2*PI/k0
+                const lambda = 2 * Math.PI / state.k0;
+                
+                // Base position of a zero-phase point
+                const x_base = state.vp * state.time;
+                
+                // Find the nearest peak to the group center (x_g)
+                const x_g = state.vg * state.time;
+                const n = Math.round((x_g - x_base) / lambda);
+                
+                // Position of the peak closest to center
+                const x_p = x_base + n * lambda;
+                
+                // Evaluate amplitude at this point to draw dot on the wave
+                const result = evaluateWavePacket(x_p, state.time);
+                const pt = mapToScreen(x_p, result.real);
+                
+                // Only draw if it's significantly visible inside the envelope
+                if (result.envelope > 0.05) {
+                    ctx.beginPath();
+                    ctx.arc(pt.px, pt.py, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // Label
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px monospace';
+                    ctx.fillText('vₚ', pt.px - 8, pt.py + 18);
+                }
+            }
+        }
+
+        // --- Main Loop ---
+        let lastTimestamp = 0;
+        function animate(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = (timestamp - lastTimestamp) / 1000; // seconds
+            lastTimestamp = timestamp;
+
+            if (state.isPlaying) {
+                // Advance time based on base simulation speed and user multiplier
+                const baseSpeed = 0.5; 
+                state.time += dt * baseSpeed * state.speedMultiplier;
+                updatePhysics();
+
+                // Check boundary reset outside of the physics calculation
+                if (state.vg * state.time > state.xMax * 1.5) {
+                    resetSimulation();
+                }
+            }
+
+            drawSimulation();
+            requestAnimationFrame(animate);
+        }
+
+        // --- Interactivity Setup ---
+        function updateStateFromInputs() {
+            state.k0 = parseFloat(inputs.k0.value);
+            state.dk = parseFloat(inputs.dk.value);
+            state.m = parseFloat(inputs.mass.value);
+            state.speedMultiplier = parseFloat(inputs.speed.value);
+            state.mode = inputs.mode.value;
+            
+            state.showCarrier = inputs.chkCarrier.checked;
+            state.showEnvelope = inputs.chkEnvelope.checked;
+            state.showPhaseMarker = inputs.chkPhaseMarker.checked;
+            state.showGroupMarker = inputs.chkGroupMarker.checked;
+
+            displays.k0.textContent = state.k0.toFixed(1);
+            displays.dk.textContent = state.dk.toFixed(2);
+            displays.mass.textContent = state.m.toFixed(1);
+            displays.speed.textContent = state.speedMultiplier.toFixed(1) + 'x';
+            
+            updatePhysics();
+
+            // Check boundary reset if modified during pause
+            if (state.vg * state.time > state.xMax * 1.5) {
+                resetSimulation();
+            }
+
+            if(!state.isPlaying) drawSimulation();
+        }
+
+        function resetSimulation() {
+            // Start the wave packet on the left side
+            const startX = state.xMin + 5; 
+            
+            // Calculate vg manually here to avoid calling updatePhysics before setting state.time
+            const currentVg = state.mode === 'quantum' ? (state.k0 / state.m) : state.m;
+            state.time = startX / (currentVg || 1); // fallback to 1 to prevent division by zero
+            
+            updatePhysics(); 
+            if(!state.isPlaying) drawSimulation();
+        }
+
+        // Event Listeners
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if(!state.isPlaying) drawSimulation();
+        });
+
+        const allInputs = [inputs.k0, inputs.dk, inputs.mass, inputs.speed, inputs.mode, 
+                           inputs.chkCarrier, inputs.chkEnvelope, inputs.chkPhaseMarker, inputs.chkGroupMarker];
+                           
+        allInputs.forEach(input => {
+            input.addEventListener('input', updateStateFromInputs);
+            input.addEventListener('change', updateStateFromInputs);
+        });
+
+        document.getElementById('btnPlayPause').addEventListener('click', (e) => {
+            state.isPlaying = !state.isPlaying;
+            e.target.textContent = state.isPlaying ? 'Pause' : 'Play';
+            if(state.isPlaying) lastTimestamp = 0; // Prevent time jump
+        });
+
+        document.getElementById('btnReset').addEventListener('click', resetSimulation);
+
+        document.getElementById('btnExport').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'wave-packet-simulation.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        // --- Initialization ---
+        resizeCanvas();
+        updateStateFromInputs();
+        resetSimulation(); // Initial positioning
+        requestAnimationFrame(animate);
+
+    </script>
+</body>
+</html>

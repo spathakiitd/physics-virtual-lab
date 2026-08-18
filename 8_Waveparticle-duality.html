@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Wave-Particle Duality Simulator | de Broglie Hypothesis</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- KaTeX for Math -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
+        .pointer-events-auto { pointer-events: auto; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .slider-custom {
+            -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; background: #334155; outline: none;
+        }
+        .slider-custom::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #38bdf8; cursor: pointer; transition: 0.2s;
+        }
+        .slider-custom::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        .callout {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(14, 165, 233, 0.9); color: white; padding: 10px 20px; border-radius: 8px;
+            font-weight: 500; opacity: 0; transition: opacity 0.3s, transform 0.3s;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4); pointer-events: none; z-index: 50;
+        }
+        .callout.show { opacity: 1; transform: translate(-50%, 20px); }
+
+        .btn {
+            background: #1e293b; border: 1px solid #334155; color: #e2e8f0; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.875rem;
+        }
+        .btn:hover { background: #334155; border-color: #475569; }
+        .btn.active { background: #0369a1; border-color: #38bdf8; color: white; }
+        .btn-primary { background: #0ea5e9; color: white; border-color: #0284c7; }
+        .btn-primary:hover { background: #0284c7; }
+        .btn-danger { background: #e11d48; color: white; border-color: #be123c; }
+        .btn-danger:hover { background: #be123c; }
+
+        #detector-preview {
+            width: 100%; height: 100px; background: black; border-radius: 4px; border: 1px solid #334155; image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer">
+        <!-- Top Bar -->
+        <header class="w-full glass-panel border-b border-gray-700/50 p-4 flex justify-between items-center pointer-events-auto">
+            <div>
+                <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-blue-600 tracking-tight">WAVE–PARTICLE DUALITY</h1>
+                <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Exploring the de Broglie Hypothesis</p>
+            </div>
+            <div class="flex gap-2">
+                <button class="btn btn-primary" id="btn-shoot">Fire Particle</button>
+                <button class="btn" id="btn-toggle-beam">Continuous Beam [ON]</button>
+                <button class="btn btn-danger" id="btn-clear">Clear Detector</button>
+                <button class="btn" id="btn-reset-cam">Reset Camera</button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex justify-between p-4 overflow-hidden gap-4">
+            
+            <!-- Left Panel: Controls -->
+            <div class="w-80 glass-panel rounded-xl p-4 flex flex-col gap-5 overflow-y-auto pointer-events-auto">
+                
+                <div>
+                    <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider mb-3">Visualization Mode</h2>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="btn text-xs" data-mode="particle">Particle</button>
+                        <button class="btn text-xs" data-mode="wave">Wave</button>
+                        <button class="btn text-xs active" data-mode="duality">Duality</button>
+                    </div>
+                </div>
+
+                <hr class="border-gray-700">
+
+                <div>
+                    <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider mb-3">Particle Properties</h2>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between text-xs mb-1">
+                            <label>Velocity ($v$)</label>
+                            <span id="val-velocity" class="text-sky-300 font-mono">5.0</span>
+                        </div>
+                        <input type="range" id="slider-velocity" class="slider-custom" min="1" max="10" step="0.1" value="5">
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="flex justify-between text-xs mb-1">
+                            <label>Mass ($m$)</label>
+                            <select id="select-mass" class="bg-gray-800 text-xs border border-gray-600 rounded px-1 outline-none">
+                                <option value="1">Electron (Simulated)</option>
+                                <option value="2">Heavier Particle</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-gray-700">
+
+                <div>
+                    <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider mb-3">Experiment Setup</h2>
+                    <div class="mb-4">
+                        <div class="flex justify-between text-xs mb-1">
+                            <label>Slit Separation ($d$)</label>
+                            <span id="val-slit" class="text-sky-300 font-mono">2.0</span>
+                        </div>
+                        <input type="range" id="slider-slit" class="slider-custom" min="1" max="4" step="0.1" value="2.0">
+                    </div>
+                    
+                    <div class="text-xs text-gray-400 mt-2 bg-gray-800/50 p-2 rounded">
+                        <strong>Current $\lambda$:</strong> <span id="val-lambda-ui" class="text-white font-mono font-bold">2.00</span> units
+                    </div>
+                </div>
+
+                <hr class="border-gray-700">
+                
+                <div>
+                    <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider mb-2">Presets</h2>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="btn text-xs" onclick="applyPreset('slow')">Slow Electron</button>
+                        <button class="btn text-xs" onclick="applyPreset('fast')">Fast Electron</button>
+                        <button class="btn text-xs" onclick="applyPreset('diffraction')">Optimal Diffraction</button>
+                        <button class="btn text-xs" onclick="applyPreset('particle')">Classical Particle</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Panel: Data & Physics -->
+            <div class="w-80 glass-panel rounded-xl p-4 flex flex-col gap-4 overflow-y-auto pointer-events-auto">
+                
+                <div>
+                    <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider mb-2">The Physics</h2>
+                    <div class="bg-gray-800/50 p-3 rounded-lg text-sm">
+                        <div class="mb-2">de Broglie Wavelength:</div>
+                        <div id="math-lambda" class="text-center text-lg text-white my-2"></div>
+                        <div class="text-xs text-gray-400 mt-2 border-t border-gray-700 pt-2 flex justify-between">
+                            <span>$p = m \cdot v$</span>
+                            <span id="math-p-val" class="font-mono text-sky-300"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider mb-2">Relationship Graph</h2>
+                    <div class="bg-gray-800/50 p-2 rounded-lg h-40">
+                        <canvas id="chart-lambda-v"></canvas>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1 text-center">Wavelength $\lambda$ vs. Velocity $v$</p>
+                </div>
+
+                <div class="flex-1 flex flex-col">
+                    <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider mb-2 flex justify-between">
+                        <span>Detector</span>
+                        <span id="hit-counter" class="text-white bg-sky-600/50 px-2 rounded font-mono">0 hits</span>
+                    </h2>
+                    <canvas id="detector-preview" class="flex-1 min-h-[100px]"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Panel: Educational Callout & Tutorial -->
+        <div class="w-full p-4 pointer-events-auto flex justify-center pb-6">
+            <div class="glass-panel rounded-xl p-4 max-w-4xl w-full flex items-center justify-between">
+                <div class="flex-1 pr-6 border-r border-gray-700">
+                    <h3 class="font-bold text-sky-400 mb-1" id="tut-title">1. Matter as a Particle</h3>
+                    <p class="text-sm text-gray-300" id="tut-text">In classical physics, an electron is viewed as a localized particle traveling along a distinct trajectory from the source to the detector.</p>
+                </div>
+                <div class="pl-6 flex gap-2 shrink-0">
+                    <button class="btn" id="btn-tut-prev">Previous</button>
+                    <span class="px-2 py-1 text-sm text-gray-400 self-center" id="tut-counter">1 / 5</span>
+                    <button class="btn btn-primary" id="btn-tut-next">Next Idea</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Callout -->
+    <div id="callout" class="callout">Contextual Info</div>
+
+    <script>
+        // --- Configuration & State ---
+        const CONFIG = {
+            H_SIM: 10, // Simulated Planck's Constant
+            L: 40,     // Distance from slit to screen
+            SLIT_WIDTH: 0.5,
+            SCREEN_SIZE: 40,
+            EMISSION_RATE: 0.05, // Seconds between particles in continuous mode
+            PARTICLE_SPEED_MULT: 10
+        };
+
+        const state = {
+            velocity: 5.0,
+            mass: 1.0,
+            slitDist: 2.0,
+            mode: 'duality', // particle, wave, duality
+            isContinuous: true,
+            lambda: 0,
+            momentum: 0,
+            hits: 0
+        };
+
+        // Update derived state
+        function calcPhysics() {
+            state.momentum = state.mass * state.velocity;
+            state.lambda = CONFIG.H_SIM / state.momentum;
+        }
+        calcPhysics();
+
+        // --- DOM Elements ---
+        const UI = {
+            velSlider: document.getElementById('slider-velocity'),
+            velVal: document.getElementById('val-velocity'),
+            massSelect: document.getElementById('select-mass'),
+            slitSlider: document.getElementById('slider-slit'),
+            slitVal: document.getElementById('val-slit'),
+            lambdaVal: document.getElementById('val-lambda-ui'),
+            modeBtns: document.querySelectorAll('[data-mode]'),
+            btnShoot: document.getElementById('btn-shoot'),
+            btnToggleBeam: document.getElementById('btn-toggle-beam'),
+            btnClear: document.getElementById('btn-clear'),
+            btnResetCam: document.getElementById('btn-reset-cam'),
+            mathPVal: document.getElementById('math-p-val'),
+            hitCounter: document.getElementById('hit-counter'),
+            detPreview: document.getElementById('detector-preview'),
+            callout: document.getElementById('callout')
+        };
+
+        // --- Three.js Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(-20, 30, 60);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(10, 0, 0);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0x38bdf8, 0.8);
+        dirLight.position.set(-20, 50, 20);
+        scene.add(dirLight);
+        const pointLight = new THREE.PointLight(0x0ea5e9, 1, 100);
+        pointLight.position.set(-40, 0, 0);
+        scene.add(pointLight);
+
+        // --- Scene Objects ---
+        const materials = {
+            gun: new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.2 }),
+            barrier: new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.5, roughness: 0.8, transparent: true, opacity: 0.9 }),
+            screenBg: new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
+        };
+
+        // 1. Electron Gun
+        const gunGroup = new THREE.Group();
+        gunGroup.position.set(-45, 0, 0);
+        const gunBody = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 8, 16), materials.gun);
+        gunBody.rotation.z = Math.PI / 2;
+        const gunNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 1, 3, 16), materials.gun);
+        gunNozzle.rotation.z = Math.PI / 2;
+        gunNozzle.position.x = 5;
+        gunGroup.add(gunBody);
+        gunGroup.add(gunNozzle);
+        scene.add(gunGroup);
+
+        // Label for Gun
+        const createLabel = (text, pos) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 256; canvas.height = 64;
+            ctx.fillStyle = 'rgba(0,0,0,0)'; ctx.fillRect(0,0,256,64);
+            ctx.font = 'bold 24px Inter'; ctx.fillStyle = '#38bdf8'; ctx.textAlign = 'center';
+            ctx.fillText(text, 128, 40);
+            const tex = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.SpriteMaterial({ map: tex });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(15, 3.75, 1);
+            sprite.position.copy(pos);
+            scene.add(sprite);
+        };
+        createLabel("Electron Source", new THREE.Vector3(-45, 8, 0));
+
+        // 2. Double Slit Barrier
+        const barrierGroup = new THREE.Group();
+        barrierGroup.position.set(0, 0, 0);
+        scene.add(barrierGroup);
+        
+        let barrierMeshes = [];
+        function rebuildBarrier() {
+            // Remove old
+            barrierMeshes.forEach(m => barrierGroup.remove(m));
+            barrierMeshes = [];
+            
+            const w = 2; // depth
+            const h = 40; // total height
+            const gap = CONFIG.SLIT_WIDTH;
+            const dist = state.slitDist;
+            
+            const mat = materials.barrier;
+            
+            // Top block
+            const topH = (h / 2) - (dist / 2) - (gap / 2);
+            const topGeo = new THREE.BoxGeometry(w, topH, 30);
+            const topMesh = new THREE.Mesh(topGeo, mat);
+            topMesh.position.y = (h / 2) - (topH / 2);
+            
+            // Middle block
+            const midH = dist - gap;
+            const midMesh = new THREE.Mesh(new THREE.BoxGeometry(w, Math.max(0.1, midH), 30), mat);
+            midMesh.position.y = 0;
+            
+            // Bottom block
+            const botH = (h / 2) - (dist / 2) - (gap / 2);
+            const botMesh = new THREE.Mesh(new THREE.BoxGeometry(w, botH, 30), mat);
+            botMesh.position.y = -((h / 2) - (botH / 2));
+            
+            barrierGroup.add(topMesh, midMesh, botMesh);
+            barrierMeshes.push(topMesh, midMesh, botMesh);
+        }
+        rebuildBarrier();
+        createLabel("Double Slit", new THREE.Vector3(0, 22, 0));
+
+        // 3. Detector Screen
+        const screenGroup = new THREE.Group();
+        screenGroup.position.set(CONFIG.L, 0, 0);
+        
+        // Setup Screen Canvas Texture
+        const screenCanvas = document.createElement('canvas');
+        screenCanvas.width = 1024;
+        screenCanvas.height = 1024;
+        const screenCtx = screenCanvas.getContext('2d');
+        screenCtx.fillStyle = '#050510';
+        screenCtx.fillRect(0, 0, 1024, 1024);
+        
+        const screenTex = new THREE.CanvasTexture(screenCanvas);
+        const screenMat = new THREE.MeshBasicMaterial({ map: screenTex });
+        const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.SCREEN_SIZE, CONFIG.SCREEN_SIZE), screenMat);
+        // Rotate screen to face source
+        screenMesh.rotation.y = -Math.PI / 2;
+        screenGroup.add(screenMesh);
+        
+        // Add a frame to the screen
+        const frameGeo = new THREE.BoxGeometry(1, CONFIG.SCREEN_SIZE+1, CONFIG.SCREEN_SIZE+1);
+        const frameMat = new THREE.MeshStandardMaterial({color: 0x334155});
+        const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+        frameMesh.position.x = 0.6; // Slightly behind
+        screenGroup.add(frameMesh);
+        
+        scene.add(screenGroup);
+        createLabel("Detector Screen", new THREE.Vector3(CONFIG.L, 22, 0));
+
+        // Grid Helper for visual ground
+        const grid = new THREE.GridHelper(100, 20, 0x334155, 0x1e293b);
+        grid.position.y = -20;
+        scene.add(grid);
+
+        // --- Wave Packet Visuals (Canvas based Sprite for ease and performance) ---
+        function createWavePacketCanvas(lambda) {
+            const c = document.createElement('canvas');
+            c.width = 128; c.height = 64;
+            const ctx = c.getContext('2d');
+            
+            // Draw Gaussian envelope sine wave
+            ctx.clearRect(0, 0, 128, 64);
+            ctx.strokeStyle = '#0ea5e9';
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#0ea5e9';
+            
+            ctx.beginPath();
+            const points = 100;
+            for(let i=0; i<=points; i++) {
+                const x = (i / points); // 0 to 1
+                const realX = x * 128;
+                // Envelope center at 0.5
+                const env = Math.exp(-Math.pow((x - 0.5) / 0.2, 2));
+                // Frequency based on lambda (inverse)
+                const freq = 10 / lambda; 
+                const y = 32 + Math.sin(x * Math.PI * 2 * freq) * 20 * env;
+                
+                if(i===0) ctx.moveTo(realX, y);
+                else ctx.lineTo(realX, y);
+            }
+            ctx.stroke();
+            return c;
+        }
+
+        // Shared material for wave packets, updated dynamically
+        let wavePacketCanvas = createWavePacketCanvas(state.lambda);
+        let wavePacketTex = new THREE.CanvasTexture(wavePacketCanvas);
+        const wavePacketMat = new THREE.SpriteMaterial({ 
+            map: wavePacketTex, 
+            color: 0xffffff,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        function updateWaveVisuals() {
+            wavePacketCanvas = createWavePacketCanvas(state.lambda);
+            wavePacketTex.image = wavePacketCanvas;
+            wavePacketTex.needsUpdate = true;
+        }
+
+        // --- Physics: Quantum Probability ---
+        
+        // Calculate probability of hitting position Y on screen
+        function probabilityDensity(y) {
+            const d = state.slitDist;
+            const L = CONFIG.L;
+            const lambda = state.lambda;
+            const a = CONFIG.SLIT_WIDTH;
+
+            // angle theta
+            const sinTheta = y / Math.sqrt(L*L + y*y);
+            
+            // Interference term (double slit)
+            const phaseInterference = (Math.PI * d * sinTheta) / lambda;
+            const interference = Math.pow(Math.cos(phaseInterference), 2);
+            
+            // Diffraction term (single slit envelope)
+            // sinc(x) = sin(x)/x
+            let diffraction = 1;
+            if (a > 0) {
+                const phaseDiffraction = (Math.PI * a * sinTheta) / lambda;
+                if (Math.abs(phaseDiffraction) > 0.001) {
+                    diffraction = Math.pow(Math.sin(phaseDiffraction) / phaseDiffraction, 2);
+                }
+            }
+            
+            // Artificial gaussian decay to prevent infinite spread on screen edges
+            const envelope = Math.exp(-(y*y)/(200));
+
+            return interference * diffraction * envelope;
+        }
+
+        // Rejection sampling to find a hit point
+        function getHitPositionY() {
+            if (state.mode === 'particle') {
+                // Classical particle: goes straight through slit 1 or slit 2
+                const slitOffset = (Math.random() > 0.5 ? 1 : -1) * (state.slitDist / 2);
+                // Add minor classical spread
+                return slitOffset + (Math.random() - 0.5) * 1.5; 
+            }
+
+            // Quantum wave behavior
+            const maxY = CONFIG.SCREEN_SIZE / 2;
+            let attempt = 0;
+            while(attempt < 1000) {
+                const y = (Math.random() * 2 - 1) * maxY;
+                const p = probabilityDensity(y);
+                if (Math.random() < p) {
+                    return y;
+                }
+                attempt++;
+            }
+            return 0; // Fallback
+        }
+
+        // --- Particle System ---
+        const particles = [];
+        
+        const particleMat = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, 
+            transparent: true,
+            blending: THREE.AdditiveBlending
+        });
+        const particleGeo = new THREE.SphereGeometry(0.4, 8, 8);
+
+        function emitParticle() {
+            const p = new THREE.Group();
+            
+            // Physical dot
+            const dot = new THREE.Mesh(particleGeo, particleMat);
+            p.add(dot);
+            
+            // Wave Sprite
+            const wave = new THREE.Sprite(wavePacketMat);
+            wave.scale.set(8, 4, 1);
+            p.add(wave);
+            
+            p.position.set(-40, 0, 0); // start at gun nozzle
+            scene.add(p);
+            
+            particles.push({
+                mesh: p,
+                dot: dot,
+                wave: wave,
+                x: -40,
+                targetY: 0,
+                passedSlit: false,
+                speed: state.velocity * CONFIG.PARTICLE_SPEED_MULT
+            });
+        }
+
+        // Screen drawing utilities
+        function drawHitOnScreen(y) {
+            // Map physical Y (-20 to 20) to canvas (0 to 1024)
+            // Screen is rotated, so physical Y maps to canvas X
+            const normalizedY = (y + (CONFIG.SCREEN_SIZE/2)) / CONFIG.SCREEN_SIZE; 
+            const cx = normalizedY * 1024;
+            // Spread vertically (canvas Y) just for visual thickness
+            const cy = 512 + (Math.random() * 200 - 100); 
+
+            // Draw glowing dot
+            screenCtx.globalCompositeOperation = 'lighter';
+            screenCtx.fillStyle = 'rgba(56, 189, 248, 0.4)'; // Sky blue
+            screenCtx.beginPath();
+            screenCtx.arc(cx, cy, 3, 0, Math.PI * 2);
+            screenCtx.fill();
+            
+            screenCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            screenCtx.beginPath();
+            screenCtx.arc(cx, cy, 1, 0, Math.PI * 2);
+            screenCtx.fill();
+
+            screenTex.needsUpdate = true;
+            
+            // Update UI preview canvas
+            const prevCtx = UI.detPreview.getContext('2d');
+            // Scale down coordinates
+            const px = cx * (UI.detPreview.width / 1024);
+            const py = cy * (UI.detPreview.height / 1024);
+            prevCtx.fillStyle = 'rgba(56, 189, 248, 0.5)';
+            prevCtx.fillRect(px, py, 1.5, 1.5);
+
+            state.hits++;
+            UI.hitCounter.innerText = `${state.hits.toLocaleString()} hits`;
+        }
+
+        function clearScreen() {
+            screenCtx.globalCompositeOperation = 'source-over';
+            screenCtx.fillStyle = '#050510';
+            screenCtx.fillRect(0, 0, 1024, 1024);
+            screenTex.needsUpdate = true;
+            
+            const prevCtx = UI.detPreview.getContext('2d');
+            prevCtx.clearRect(0,0, UI.detPreview.width, UI.detPreview.height);
+            
+            state.hits = 0;
+            UI.hitCounter.innerText = `0 hits`;
+        }
+        
+        // Handle UI canvas resizing
+        UI.detPreview.width = UI.detPreview.clientWidth;
+        UI.detPreview.height = UI.detPreview.clientHeight;
+
+        // --- Animation Loop ---
+        let lastTime = 0;
+        let emitTimer = 0;
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            const dt = (time - lastTime) / 1000;
+            lastTime = time;
+
+            if (dt > 0.1) return; // Prevent huge jumps on tab switch
+
+            controls.update();
+
+            // Continuous emission
+            if (state.isContinuous) {
+                emitTimer += dt;
+                // Faster velocity means faster emission rate visually
+                const dynamicRate = CONFIG.EMISSION_RATE / (state.velocity * 0.5);
+                if (emitTimer > dynamicRate) {
+                    emitParticle();
+                    emitTimer = 0;
+                }
+            }
+
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                
+                // Mode visual overrides
+                p.dot.visible = (state.mode === 'particle' || state.mode === 'duality');
+                p.wave.visible = (state.mode === 'wave' || state.mode === 'duality');
+
+                if (!p.passedSlit) {
+                    // Moving from gun to slit
+                    p.x += p.speed * dt;
+                    p.mesh.position.x = p.x;
+                    
+                    if (p.x >= 0) {
+                        p.passedSlit = true;
+                        p.x = 0;
+                        p.mesh.position.x = 0;
+                        // Determine final destination at moment of passing slit based on current physics
+                        p.targetY = getHitPositionY();
+                        
+                        // Start wave expanding effect if wave mode
+                        if (state.mode !== 'particle') {
+                            p.wave.scale.set(10, 10, 1);
+                        }
+                    }
+                } else {
+                    // Moving from slit to screen
+                    p.x += p.speed * dt;
+                    
+                    // Interpolate Y position
+                    const progress = p.x / CONFIG.L;
+                    p.mesh.position.x = p.x;
+                    p.mesh.position.y = p.targetY * progress;
+                    
+                    if (state.mode !== 'particle') {
+                         // Expand wave packet as it travels
+                         const s = 10 + (progress * 20);
+                         p.wave.scale.set(s, s, 1);
+                         // Fade out slightly
+                         p.wave.material.opacity = 1 - (progress * 0.5);
+                    }
+
+                    // Hit screen
+                    if (p.x >= CONFIG.L) {
+                        drawHitOnScreen(p.targetY);
+                        scene.remove(p.mesh);
+                        particles.splice(i, 1);
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- Chart.js Setup ---
+        const ctxChart = document.getElementById('chart-lambda-v').getContext('2d');
+        
+        // Generate dataset curve
+        const vData = [];
+        const lData = [];
+        for(let v = 1; v <= 10; v+=0.5) {
+            vData.push(v);
+            lData.push(CONFIG.H_SIM / (state.mass * v));
+        }
+
+        const chart = new Chart(ctxChart, {
+            type: 'line',
+            data: {
+                labels: vData,
+                datasets: [{
+                    label: 'de Broglie Wavelength',
+                    data: lData,
+                    borderColor: '#0ea5e9',
+                    backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 0
+                },
+                {
+                    label: 'Current State',
+                    data: [{x: state.velocity, y: state.lambda}],
+                    backgroundColor: '#fde047',
+                    borderColor: '#ca8a04',
+                    pointRadius: 6,
+                    type: 'scatter'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { 
+                        type: 'linear', min: 0, max: 10,
+                        title: { display: true, text: 'Velocity (v)', color: '#94a3b8' },
+                        grid: { color: '#334155' },
+                        ticks: { color: '#64748b' }
+                    },
+                    y: { 
+                        title: { display: true, text: 'Wavelength (λ)', color: '#94a3b8' },
+                        grid: { color: '#334155' },
+                        ticks: { color: '#64748b' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                }
+            }
+        });
+
+        // --- Math Rendering (KaTeX) ---
+        function renderMath() {
+            const mathContainer = document.getElementById('math-lambda');
+            const formula = `\\lambda = \\frac{h}{p} = \\frac{${CONFIG.H_SIM}}{${state.mass} \\times ${state.velocity.toFixed(1)}} = ${state.lambda.toFixed(2)}`;
+            katex.render(formula, mathContainer, { throwOnError: false, displayMode: true });
+        }
+
+        // --- UI Interactions & State Updates ---
+        
+        function showCallout(msg) {
+            UI.callout.innerText = msg;
+            UI.callout.classList.add('show');
+            clearTimeout(UI.callout.timer);
+            UI.callout.timer = setTimeout(() => UI.callout.classList.remove('show'), 3000);
+        }
+
+        function updateAllUI() {
+            calcPhysics();
+            
+            UI.velSlider.value = state.velocity;
+            UI.velVal.innerText = state.velocity.toFixed(1);
+            
+            UI.massSelect.value = state.mass;
+            
+            UI.slitSlider.value = state.slitDist;
+            UI.slitVal.innerText = state.slitDist.toFixed(1);
+            
+            UI.lambdaVal.innerText = state.lambda.toFixed(2);
+            UI.mathPVal.innerText = `${state.momentum.toFixed(1)} kg·m/s (sim)`;
+            
+            // Update mode buttons visually
+            UI.modeBtns.forEach(btn => {
+                if(btn.dataset.mode === state.mode) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            
+            // Update Chart
+            // Recompute curve if mass changed
+            const newLData = vData.map(v => CONFIG.H_SIM / (state.mass * v));
+            chart.data.datasets[0].data = newLData;
+            chart.data.datasets[1].data = [{x: state.velocity, y: state.lambda}];
+            chart.update();
+
+            renderMath();
+            updateWaveVisuals();
+            rebuildBarrier();
+            
+            // Adjust particle speeds
+            particles.forEach(p => p.speed = state.velocity * CONFIG.PARTICLE_SPEED_MULT);
+        }
+
+        // Event Listeners
+        UI.velSlider.addEventListener('input', (e) => {
+            const oldV = state.velocity;
+            state.velocity = parseFloat(e.target.value);
+            updateAllUI();
+            
+            if(Math.abs(oldV - state.velocity) > 1) {
+                if(state.velocity > oldV) showCallout("Velocity increased \u2192 Momentum increases \u2192 Wavelength decreases. Pattern tighter.");
+                else showCallout("Velocity decreased \u2192 Momentum decreases \u2192 Wavelength increases. Pattern broader.");
+            }
+        });
+
+        UI.massSelect.addEventListener('change', (e) => {
+            state.mass = parseFloat(e.target.value);
+            updateAllUI();
+            if(state.mass > 1) showCallout("Heavier mass \u2192 Higher momentum \u2192 Much shorter wavelength (more particle-like).");
+        });
+
+        UI.slitSlider.addEventListener('input', (e) => {
+            state.slitDist = parseFloat(e.target.value);
+            updateAllUI();
+        });
+
+        UI.modeBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                state.mode = e.target.dataset.mode;
+                updateAllUI();
+                if(state.mode === 'particle') showCallout("Particle View: No interference modeled. Accumulates as two bands.");
+                if(state.mode === 'wave') showCallout("Wave View: Emphasizes probability amplitude propagation.");
+                if(state.mode === 'duality') showCallout("Duality View: Both models simultaneously visible.");
+            });
+        });
+
+        UI.btnShoot.addEventListener('click', () => {
+            emitParticle();
+            if(!state.isContinuous) showCallout("Single electron fired. Note its localized detection.");
+        });
+
+        UI.btnToggleBeam.addEventListener('click', () => {
+            state.isContinuous = !state.isContinuous;
+            UI.btnToggleBeam.innerText = state.isContinuous ? "Continuous Beam [ON]" : "Continuous Beam [OFF]";
+            UI.btnToggleBeam.classList.toggle('btn-primary');
+        });
+
+        UI.btnClear.addEventListener('click', clearScreen);
+
+        UI.btnResetCam.addEventListener('click', () => {
+            camera.position.set(-20, 30, 60);
+            controls.target.set(10, 0, 0);
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            UI.detPreview.width = UI.detPreview.clientWidth;
+            UI.detPreview.height = UI.detPreview.clientHeight;
+        });
+
+        // --- Presets ---
+        window.applyPreset = function(type) {
+            clearScreen();
+            state.mode = 'duality';
+            state.mass = 1;
+            
+            if (type === 'slow') {
+                state.velocity = 1.5;
+                state.slitDist = 2.0;
+                showCallout("Preset: Slow Electron. Long wavelength, broad diffraction pattern.");
+            } else if (type === 'fast') {
+                state.velocity = 9.0;
+                state.slitDist = 2.0;
+                showCallout("Preset: Fast Electron. Short wavelength, tightly spaced fringes.");
+            } else if (type === 'diffraction') {
+                state.velocity = 4.0;
+                state.slitDist = 3.0; // wider slits make nicer patterns at this speed
+                showCallout("Preset: Optimal settings for viewing classic interference fringes.");
+            } else if (type === 'particle') {
+                state.mode = 'particle';
+                state.velocity = 6.0;
+                showCallout("Preset: Classical Particle. Only classical trajectories allowed.");
+            }
+            updateAllUI();
+        }
+
+        // --- Tutorial System ---
+        const tutorialSteps = [
+            {
+                title: "1. Matter as a Particle",
+                text: "In classical physics, an electron is viewed as a localized particle traveling along a distinct trajectory from the source to the detector.",
+                setup: () => { state.mode = 'particle'; state.velocity = 5; updateAllUI(); }
+            },
+            {
+                title: "2. de Broglie's Hypothesis",
+                text: "Louis de Broglie proposed that matter also has wave properties. The wavelength is inversely proportional to momentum: λ = h / p.",
+                setup: () => { state.mode = 'wave'; state.velocity = 2; updateAllUI(); }
+            },
+            {
+                title: "3. Wave-Particle Duality",
+                text: "Quantum objects exhibit both behaviors. We visualize the electron as a localized 'particle' guided by a 'wave packet' of probability.",
+                setup: () => { state.mode = 'duality'; state.velocity = 4; updateAllUI(); }
+            },
+            {
+                title: "4. Interference at the Slits",
+                text: "When the probability wave passes through the double slits, it interferes with itself, creating regions of high and low probability on the screen.",
+                setup: () => { state.slitDist = 2.5; updateAllUI(); }
+            },
+            {
+                title: "5. The Measurement Problem",
+                text: "Even though it acts like a wave in transit, the electron is ALWAYS detected as a single, localized particle impact on the screen. The wave pattern only emerges after many hits.",
+                setup: () => { /* let it run */ }
+            }
+        ];
+
+        let currentTut = 0;
+        const eTutTitle = document.getElementById('tut-title');
+        const eTutText = document.getElementById('tut-text');
+        const eTutCounter = document.getElementById('tut-counter');
+
+        function loadTutorial(index) {
+            currentTut = index;
+            const step = tutorialSteps[index];
+            eTutTitle.innerText = step.title;
+            eTutText.innerText = step.text;
+            eTutCounter.innerText = `${index + 1} / ${tutorialSteps.length}`;
+            step.setup();
+        }
+
+        document.getElementById('btn-tut-prev').addEventListener('click', () => {
+            if(currentTut > 0) loadTutorial(currentTut - 1);
+        });
+        document.getElementById('btn-tut-next').addEventListener('click', () => {
+            if(currentTut < tutorialSteps.length - 1) loadTutorial(currentTut + 1);
+            else {
+                showCallout("Tutorial Complete! Experiment freely.");
+            }
+        });
+
+
+        // --- Boot Up ---
+        setTimeout(() => {
+            renderMath();
+            updateAllUI();
+            loadTutorial(0); // Start at step 1
+            requestAnimationFrame(animate);
+        }, 500);
+
+    </script>
+</body>
+</html>

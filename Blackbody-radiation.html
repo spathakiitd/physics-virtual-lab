@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackbody Radiation & Quantum Mechanics Simulation</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --planck-color: #38bdf8;
+            --rj-color: #f87171;
+            --wien-color: #facc15;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: #334155;
+            color: white;
+            border: 1px solid #475569;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover { background: #475569; }
+        button.primary { background: var(--accent); color: #0f172a; border: none; font-weight: 600; }
+        button.primary:hover { background: #0ea5e9; }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 340px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .panel-section h2 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.85rem;
+        }
+
+        .control-group { margin-bottom: 15px; }
+        .control-group:last-child { margin-bottom: 0; }
+        
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .val-display { font-family: monospace; color: var(--accent); }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .toggle-group input {
+            cursor: pointer;
+            width: 16px; height: 16px;
+        }
+
+        .legend-color {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+        }
+
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-value { font-size: 1rem; font-family: monospace; font-weight: 600; }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        canvas {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 6px;
+            pointer-events: none;
+            font-size: 0.85rem;
+            color: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 20;
+            white-space: nowrap;
+        }
+
+        .tooltip-row { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 4px; }
+        .tooltip-row:last-child { margin-bottom: 0; }
+        .tooltip-val { font-family: monospace; font-weight: bold; }
+
+        .domain-toggle {
+            display: flex;
+            background: #0f172a;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            border: 1px solid #334155;
+        }
+        .domain-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 8px;
+            color: var(--text-muted);
+            border-radius: 0;
+            transition: 0.2s;
+        }
+        .domain-btn.active { background: var(--accent); color: #0f172a; font-weight: bold; }
+
+        /* Modal / Theory Panel */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none; justify-content: center; align-items: center;
+            z-index: 100; backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background: var(--panel-bg);
+            width: 800px; max-width: 90%; max-height: 90vh;
+            border-radius: 8px; border: 1px solid var(--border-color);
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+        }
+        .modal-header {
+            padding: 15px 20px; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-body {
+            padding: 20px; overflow-y: auto; line-height: 1.6; color: #cbd5e1;
+            font-size: 0.95rem;
+        }
+        .modal-body h3 { color: var(--accent); margin: 20px 0 10px 0; }
+        .modal-body h3:first-child { margin-top: 0; }
+        .modal-body p { margin-bottom: 15px; }
+        .modal-body ul { margin-left: 20px; margin-bottom: 15px; }
+        .close-btn { background: transparent; border: none; color: white; font-size: 1.5rem; padding: 0; width: 30px; height: 30px; justify-content: center; }
+        .close-btn:hover { background: #334155; }
+        .formula { background: #0f172a; padding: 10px; border-radius: 4px; font-family: monospace; text-align: center; margin: 10px 0; border: 1px solid #334155; color: #60a5fa;}
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); max-height: 40vh; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+            Blackbody Radiation Simulation
+        </h1>
+        <div class="header-controls">
+            <button onclick="toggleTheory()">📘 Theory & Physics</button>
+            <button class="primary" onclick="exportGraph()">📷 Export Graph</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar">
+            <div class="panel-section">
+                <h2>Domain & Perspective</h2>
+                <div class="domain-toggle">
+                    <button id="btn-wave" class="domain-btn active" onclick="setDomain('wavelength')">Wavelength (λ)</button>
+                    <button id="btn-freq" class="domain-btn" onclick="setDomain('frequency')">Frequency (ν)</button>
+                </div>
+                <div class="control-group">
+                    <label class="toggle-group">
+                        <input type="checkbox" id="chk-logy"> Use Logarithmic Y-Axis
+                    </label>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h2>Parameters</h2>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Temperature (T)</span>
+                        <span class="val-display" id="val-t">5800 K</span>
+                    </div>
+                    <input type="range" id="slider-t" min="100" max="15000" step="10" value="5800">
+                </div>
+                <div class="control-group">
+                    <button onclick="animateTemperature()" id="btn-animate" style="width: 100%; justify-content: center;">✨ Animate Stellar Evolution</button>
+                </div>
+                <div class="control-group" style="margin-top: 15px;">
+                    <div class="control-label">
+                        <span id="label-xmax">Max Wavelength</span>
+                        <span class="val-display" id="val-xmax">3.0 μm</span>
+                    </div>
+                    <input type="range" id="slider-xmax" min="0.5" max="20" step="0.1" value="3.0">
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h2>Theoretical Models</h2>
+                <label class="toggle-group">
+                    <input type="checkbox" id="chk-planck" checked>
+                    <span class="legend-color" style="background: var(--planck-color)"></span>
+                    Planck's Law (Quantum)
+                </label>
+                <label class="toggle-group">
+                    <input type="checkbox" id="chk-rj">
+                    <span class="legend-color" style="background: var(--rj-color)"></span>
+                    Rayleigh-Jeans (Classical)
+                </label>
+                <label class="toggle-group">
+                    <input type="checkbox" id="chk-wien">
+                    <span class="legend-color" style="background: var(--wien-color)"></span>
+                    Wien's Approximation
+                </label>
+                <label class="toggle-group" style="margin-top: 10px; border-top: 1px solid #334; padding-top: 10px;">
+                    <input type="checkbox" id="chk-vis" checked>
+                    🌈 Show Visible Spectrum Overlay
+                </label>
+            </div>
+
+            <div class="panel-section">
+                <h2>Real-Time Measurements</h2>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Peak Wavelength (λ_max)</div>
+                        <div class="stat-value" id="stat-peak-wave" style="color: var(--accent)">0.500 μm</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Peak Frequency (ν_max)</div>
+                        <div class="stat-value" id="stat-peak-freq" style="color: var(--accent)">341 THz</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Total Emitted Power (j*)</div>
+                        <div class="stat-value" id="stat-power">63.32 MW/m²</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Apparent Star Color</div>
+                        <div class="stat-value" id="stat-color">
+                            <span id="color-swatch" style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#fff; margin-right:5px; border:1px solid #555;"></span>
+                            <span id="color-name">White-Yellow (Sun)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Canvas -->
+        <main class="canvas-container" id="canvas-wrapper">
+            <canvas id="sim-canvas"></canvas>
+            <div class="tooltip" id="tooltip"></div>
+        </main>
+    </div>
+
+    <!-- Theory Modal -->
+    <div class="modal-overlay" id="theory-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="color: var(--accent); margin:0;">The Physics of Blackbody Radiation</h2>
+                <button class="close-btn" onclick="toggleTheory()">×</button>
+            </div>
+            <div class="modal-body">
+                <h3>What is a Blackbody?</h3>
+                <p>An ideal blackbody absorbs all incident electromagnetic radiation, regardless of frequency or angle of incidence. To stay in thermal equilibrium, it must emit radiation at the same rate it absorbs it. The spectrum of this emitted radiation depends <strong>only on the body's temperature</strong>, not its composition.</p>
+                
+                <h3>The Ultraviolet Catastrophe (Classical Failure)</h3>
+                <p>Classical physics attempted to model this using the equipartition theorem, leading to the <strong>Rayleigh-Jeans Law</strong>:</p>
+                <div class="formula">B(λ, T) = 2ck<sub>B</sub>T / λ<sup>4</sup></div>
+                <p>While accurate at long wavelengths (infrared/radio), this formula predicts that emitted energy approaches infinity as wavelength approaches zero (the ultraviolet region). This physical impossibility was dubbed the "Ultraviolet Catastrophe."</p>
+
+                <h3>Planck's Quantum Solution</h3>
+                <p>In 1900, Max Planck solved this by proposing a radical hypothesis: electromagnetic energy can only be emitted or absorbed in discrete "quanta" (packets) of energy, proportional to the frequency (E = hν). This led to <strong>Planck's Law</strong>:</p>
+                <div class="formula">B(λ, T) = (2hc² / λ⁵) * [ 1 / (e<sup>hc/λk<sub>B</sub>T</sup> - 1) ]</div>
+                <p>This perfectly matched experimental data at all wavelengths, avoiding the catastrophe and giving birth to Quantum Mechanics.</p>
+
+                <h3>Other Important Laws</h3>
+                <ul>
+                    <li><strong>Wien's Displacement Law:</strong> The peak wavelength is inversely proportional to temperature (λ<sub>max</sub> = b/T). As an object gets hotter, its peak emission shifts to shorter, bluer wavelengths.</li>
+                    <li><strong>Stefan-Boltzmann Law:</strong> The total energy radiated per unit surface area is proportional to the fourth power of temperature (j* = σT⁴). Doubling the temperature increases power output by 16 times!</li>
+                    <li><strong>Wien's Approximation:</strong> A historically important approximation that works well at short wavelengths but fails at long ones: B(λ, T) ≈ (2hc² / λ⁵) * e<sup>-hc/λk<sub>B</sub>T</sup></li>
+                </ul>
+                
+                <h3>Domain Insights</h3>
+                <p>Notice that the peak of the Planck curve shifts when switching from Wavelength to Frequency domain. This is not an error! It arises due to the non-linear transformation between λ and ν (dν = -c/λ² dλ). The physics (total area/energy) remains identical.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * PHYSICS ENGINE
+         */
+        const Physics = {
+            h: 6.62607015e-34,    // Planck constant (J*s)
+            c: 299792458,         // Speed of light (m/s)
+            kb: 1.380649e-23,     // Boltzmann constant (J/K)
+            b: 2.8977719e-3,      // Wien's displacement constant (m*K)
+            sigma: 5.670374419e-8,// Stefan-Boltzmann constant (W/m^2/K^4)
+
+            // Calculate Spectral Radiance in Wavelength domain
+            // Returns: kW / (sr * m^2 * nm)
+            planckWave: function(lambda_m, T) {
+                if (lambda_m <= 0) return 0;
+                const expTerm = (this.h * this.c) / (lambda_m * this.kb * T);
+                if (expTerm > 700) return 0; // Prevent overflow
+                const term1 = (2 * this.h * this.c * this.c) / Math.pow(lambda_m, 5);
+                const term2 = Math.exp(expTerm) - 1;
+                return (term1 / term2) * 1e-12; // Convert W/m^3 to kW/(sr*m^2*nm)
+            },
+
+            rjWave: function(lambda_m, T) {
+                if (lambda_m <= 0) return 0;
+                return (2 * this.c * this.kb * T) / Math.pow(lambda_m, 4) * 1e-12;
+            },
+
+            wienWave: function(lambda_m, T) {
+                if (lambda_m <= 0) return 0;
+                const expTerm = (this.h * this.c) / (lambda_m * this.kb * T);
+                if (expTerm > 700) return 0;
+                const term1 = (2 * this.h * this.c * this.c) / Math.pow(lambda_m, 5);
+                return (term1 * Math.exp(-expTerm)) * 1e-12;
+            },
+
+            // Calculate Spectral Radiance in Frequency domain
+            // Returns: kW / (sr * m^2 * THz)
+            planckFreq: function(nu_Hz, T) {
+                if (nu_Hz <= 0) return 0;
+                const expTerm = (this.h * nu_Hz) / (this.kb * T);
+                if (expTerm > 700) return 0;
+                const term1 = (2 * this.h * Math.pow(nu_Hz, 3)) / (this.c * this.c);
+                const term2 = Math.exp(expTerm) - 1;
+                return (term1 / term2) * 1e12 * 1e-3; // W/Hz -> *1e12 for W/THz -> *1e-3 for kW/THz
+            },
+
+            rjFreq: function(nu_Hz, T) {
+                if (nu_Hz <= 0) return 0;
+                return (2 * Math.pow(nu_Hz, 2) * this.kb * T) / (this.c * this.c) * 1e9; // kW/THz
+            },
+
+            wienFreq: function(nu_Hz, T) {
+                if (nu_Hz <= 0) return 0;
+                const expTerm = (this.h * nu_Hz) / (this.kb * T);
+                if (expTerm > 700) return 0;
+                const term1 = (2 * this.h * Math.pow(nu_Hz, 3)) / (this.c * this.c);
+                return (term1 * Math.exp(-expTerm)) * 1e9; // kW/THz
+            },
+
+            // Blackbody color approximation (T to RGB)
+            temperatureToRGB: function(T) {
+                let temp = T / 100;
+                let r, g, b;
+
+                if (temp <= 66) {
+                    r = 255;
+                    g = temp;
+                    g = 99.4708025861 * Math.log(g) - 161.1195681661;
+                    if (temp <= 19) {
+                        b = 0;
+                    } else {
+                        b = temp - 10;
+                        b = 138.5177312231 * Math.log(b) - 305.0447927307;
+                    }
+                } else {
+                    r = temp - 60;
+                    r = 329.698727446 * Math.pow(r, -0.1332047592);
+                    g = temp - 60;
+                    g = 288.1221695283 * Math.pow(g, -0.0755148492);
+                    b = 255;
+                }
+
+                return {
+                    r: Math.max(0, Math.min(255, r)),
+                    g: Math.max(0, Math.min(255, g)),
+                    b: Math.max(0, Math.min(255, b))
+                };
+            },
+            
+            getColorName: function(T) {
+                if (T < 2000) return "Infrared / Deep Red";
+                if (T < 3500) return "Red (e.g., Betelgeuse)";
+                if (T < 5000) return "Orange (e.g., Arcturus)";
+                if (T < 6000) return "Yellow-White (e.g., Sun)";
+                if (T < 7500) return "White (e.g., Sirius)";
+                if (T < 10000) return "Blue-White (e.g., Vega)";
+                return "Blue (e.g., Rigel)";
+            }
+        };
+
+        /**
+         * STATE & DOM
+         */
+        const State = {
+            domain: 'wavelength', // 'wavelength' or 'frequency'
+            T: 5800,
+            xMaxW: 3.0,     // μm
+            xMaxF: 1000,    // THz
+            points: 500,
+            logY: false,
+            showPlanck: true,
+            showRJ: false,
+            showWien: false,
+            showVis: true,
+            isAnimating: false,
+            animId: null
+        };
+
+        const DOM = {
+            canvas: document.getElementById('sim-canvas'),
+            ctx: document.getElementById('sim-canvas').getContext('2d'),
+            wrapper: document.getElementById('canvas-wrapper'),
+            tooltip: document.getElementById('tooltip'),
+            sliders: {
+                t: document.getElementById('slider-t'),
+                xmax: document.getElementById('slider-xmax')
+            },
+            vals: {
+                t: document.getElementById('val-t'),
+                xmax: document.getElementById('val-xmax')
+            },
+            labels: {
+                xmax: document.getElementById('label-xmax')
+            },
+            chks: {
+                logy: document.getElementById('chk-logy'),
+                planck: document.getElementById('chk-planck'),
+                rj: document.getElementById('chk-rj'),
+                wien: document.getElementById('chk-wien'),
+                vis: document.getElementById('chk-vis')
+            },
+            stats: {
+                peakW: document.getElementById('stat-peak-wave'),
+                peakF: document.getElementById('stat-peak-freq'),
+                power: document.getElementById('stat-power'),
+                colorName: document.getElementById('color-name'),
+                colorSwatch: document.getElementById('color-swatch')
+            }
+        };
+
+        let graphBounds = { x: 80, y: 30, w: 0, h: 0 };
+
+        /**
+         * RENDERER
+         */
+        function resizeCanvas() {
+            DOM.canvas.width = DOM.wrapper.clientWidth * window.devicePixelRatio;
+            DOM.canvas.height = DOM.wrapper.clientHeight * window.devicePixelRatio;
+            DOM.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            draw();
+        }
+
+        function formatScientific(num, digits=2) {
+            if (num === 0) return "0";
+            if (num < 0.01 || num > 9999) return num.toExponential(digits);
+            return num.toFixed(digits);
+        }
+
+        function updateStats() {
+            // Wien's displacement: peak wavelength
+            const peakWave_m = Physics.b / State.T;
+            const peakWave_um = peakWave_m * 1e6;
+            
+            // Peak frequency (approx 2.821 kT / h)
+            const peakFreq_Hz = (2.821439 * Physics.kb * State.T) / Physics.h;
+            const peakFreq_THz = peakFreq_Hz * 1e-12;
+
+            // Stefan-Boltzmann
+            const power = Physics.sigma * Math.pow(State.T, 4);
+            let powerStr = "";
+            if(power > 1e6) powerStr = (power/1e6).toFixed(2) + " MW/m²";
+            else if(power > 1e3) powerStr = (power/1e3).toFixed(2) + " kW/m²";
+            else powerStr = power.toFixed(2) + " W/m²";
+
+            DOM.stats.peakW.textContent = peakWave_um.toFixed(3) + " μm";
+            DOM.stats.peakF.textContent = peakFreq_THz.toFixed(0) + " THz";
+            DOM.stats.power.textContent = powerStr;
+
+            const color = Physics.temperatureToRGB(State.T);
+            DOM.stats.colorSwatch.style.background = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            DOM.stats.colorName.textContent = Physics.getColorName(State.T);
+        }
+
+        function getXRange() {
+            if (State.domain === 'wavelength') return { min: 0.05, max: State.xMaxW };
+            else return { min: 5, max: State.xMaxF };
+        }
+
+        function getYMax() {
+            // Find max of Planck curve in current range
+            const { min, max } = getXRange();
+            let yMax = 0;
+            const steps = 100;
+            const dx = (max - min) / steps;
+            for(let i=0; i<=steps; i++){
+                let x = min + i*dx;
+                let y = State.domain === 'wavelength' ? 
+                        Physics.planckWave(x * 1e-6, State.T) : 
+                        Physics.planckFreq(x, State.T);
+                if (y > yMax) yMax = y;
+            }
+            return yMax > 0 ? yMax * 1.2 : 1; // 20% padding
+        }
+
+        function draw() {
+            const ctx = DOM.ctx;
+            const w = DOM.wrapper.clientWidth;
+            const h = DOM.wrapper.clientHeight;
+            
+            ctx.clearRect(0, 0, w, h);
+
+            graphBounds.w = w - graphBounds.x - 30;
+            graphBounds.h = h - graphBounds.y - 60;
+
+            const xRange = getXRange();
+            const yMax = getYMax();
+            const yMinLog = yMax * 1e-6; // 6 decades for log scale
+
+            // Map functions
+            const mapX = (val) => graphBounds.x + ((val - xRange.min) / (xRange.max - xRange.min)) * graphBounds.w;
+            const mapY = (val) => {
+                if (State.logY) {
+                    if (val <= yMinLog) return graphBounds.y + graphBounds.h;
+                    const logVal = Math.log10(val);
+                    const logMax = Math.log10(yMax);
+                    const logMin = Math.log10(yMinLog);
+                    return graphBounds.y + graphBounds.h - ((logVal - logMin) / (logMax - logMin)) * graphBounds.h;
+                }
+                return graphBounds.y + graphBounds.h - (val / yMax) * graphBounds.h;
+            };
+
+            // Draw Visible Spectrum
+            if (State.showVis) {
+                let visStart, visEnd;
+                if (State.domain === 'wavelength') {
+                    visStart = 0.38; visEnd = 0.75;
+                } else {
+                    visStart = 400; visEnd = 789;
+                }
+                
+                const pxStart = Math.max(graphBounds.x, mapX(visStart));
+                const pxEnd = Math.min(graphBounds.x + graphBounds.w, mapX(visEnd));
+                
+                if (pxEnd > pxStart && pxStart < graphBounds.x + graphBounds.w && pxEnd > graphBounds.x) {
+                    const grad = ctx.createLinearGradient(
+                        State.domain==='wavelength' ? pxStart : pxEnd, 
+                        0, 
+                        State.domain==='wavelength' ? pxEnd : pxStart, 
+                        0
+                    );
+                    grad.addColorStop(0, "rgba(138, 43, 226, 0.15)"); // Violet
+                    grad.addColorStop(0.2, "rgba(0, 0, 255, 0.15)");
+                    grad.addColorStop(0.4, "rgba(0, 255, 255, 0.15)");
+                    grad.addColorStop(0.6, "rgba(0, 255, 0, 0.15)");
+                    grad.addColorStop(0.8, "rgba(255, 255, 0, 0.15)");
+                    grad.addColorStop(1, "rgba(255, 0, 0, 0.15)"); // Red
+                    
+                    let drawX = State.domain === 'wavelength' ? pxStart : pxEnd;
+                    let drawW = Math.abs(pxEnd - pxStart);
+
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(Math.min(pxStart, pxEnd), graphBounds.y, drawW, graphBounds.h);
+                    
+                    // Label
+                    ctx.fillStyle = "rgba(255,255,255,0.3)";
+                    ctx.font = "10px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText("Visible", (pxStart+pxEnd)/2, graphBounds.y + 15);
+                }
+            }
+
+            // Draw Grid & Axes
+            ctx.strokeStyle = "#334155";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            
+            // Y Grid
+            let yTicks = 5;
+            ctx.textAlign = "right";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "var(--text-muted)";
+            ctx.font = "11px sans-serif";
+            
+            if (State.logY) {
+                let logMax = Math.floor(Math.log10(yMax));
+                let logMin = Math.floor(Math.log10(yMinLog));
+                for(let l = logMin; l <= logMax; l++) {
+                    let yVal = Math.pow(10, l);
+                    let py = mapY(yVal);
+                    if(py >= graphBounds.y && py <= graphBounds.y + graphBounds.h) {
+                        ctx.moveTo(graphBounds.x, py);
+                        ctx.lineTo(graphBounds.x + graphBounds.w, py);
+                        ctx.fillText("10^" + l, graphBounds.x - 10, py);
+                    }
+                }
+            } else {
+                for (let i = 0; i <= yTicks; i++) {
+                    let yVal = (yMax / yTicks) * i;
+                    let py = mapY(yVal);
+                    ctx.moveTo(graphBounds.x, py);
+                    ctx.lineTo(graphBounds.x + graphBounds.w, py);
+                    if (i > 0) ctx.fillText(formatScientific(yVal), graphBounds.x - 10, py);
+                }
+            }
+            
+            // X Grid
+            let xTicks = 6;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "top";
+            for (let i = 0; i <= xTicks; i++) {
+                let xVal = xRange.min + ((xRange.max - xRange.min) / xTicks) * i;
+                let px = mapX(xVal);
+                ctx.moveTo(px, graphBounds.y);
+                ctx.lineTo(px, graphBounds.y + graphBounds.h);
+                ctx.fillText(xVal.toFixed(1), px, graphBounds.y + graphBounds.h + 10);
+            }
+            ctx.stroke();
+
+            // Axis Labels
+            ctx.fillStyle = "var(--text-main)";
+            ctx.font = "13px sans-serif";
+            ctx.textAlign = "center";
+            const xLabel = State.domain === 'wavelength' ? "Wavelength, λ (μm)" : "Frequency, ν (THz)";
+            ctx.fillText(xLabel, graphBounds.x + graphBounds.w/2, graphBounds.y + graphBounds.h + 35);
+            
+            ctx.save();
+            ctx.translate(20, graphBounds.y + graphBounds.h/2);
+            ctx.rotate(-Math.PI/2);
+            const yLabel = State.domain === 'wavelength' ? 
+                           "Spectral Radiance (kW / sr·m²·nm)" : 
+                           "Spectral Radiance (kW / sr·m²·THz)";
+            ctx.fillText(yLabel, 0, 0);
+            ctx.restore();
+
+            // Draw Box
+            ctx.strokeStyle = "var(--text-muted)";
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(graphBounds.x, graphBounds.y, graphBounds.w, graphBounds.h);
+
+            // Curve drawing function
+            const drawCurve = (func, color, dash=[]) => {
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash(dash);
+                
+                const dx = (xRange.max - xRange.min) / State.points;
+                let first = true;
+                
+                for(let i=0; i<=State.points; i++) {
+                    let x = xRange.min + i*dx;
+                    let y = 0;
+                    if (State.domain === 'wavelength') {
+                        y = func(x * 1e-6, State.T);
+                    } else {
+                        y = func(x, State.T);
+                    }
+                    
+                    let py = mapY(y);
+                    
+                    // Clamp for clean rendering
+                    if (py < graphBounds.y - 50) py = graphBounds.y - 50;
+                    if (py > graphBounds.y + graphBounds.h + 50) py = graphBounds.y + graphBounds.h + 50;
+
+                    let px = mapX(x);
+                    if (first) { ctx.moveTo(px, py); first = false; }
+                    else { ctx.lineTo(px, py); }
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            };
+
+            // Dynamic color for Planck based on Temperature
+            const pColorObj = Physics.temperatureToRGB(State.T);
+            const planckColor = `rgb(${pColorObj.r},${pColorObj.g},${pColorObj.b})`;
+
+            // Draw Physics Curves
+            if (State.showRJ) {
+                drawCurve(State.domain==='wavelength' ? Physics.rjWave.bind(Physics) : Physics.rjFreq.bind(Physics), 'var(--rj-color)', [5,5]);
+            }
+            if (State.showWien) {
+                drawCurve(State.domain==='wavelength' ? Physics.wienWave.bind(Physics) : Physics.wienFreq.bind(Physics), 'var(--wien-color)', [2,4]);
+            }
+            if (State.showPlanck) {
+                // Use white if it's too dark
+                const lum = 0.299*pColorObj.r + 0.587*pColorObj.g + 0.114*pColorObj.b;
+                const pCol = lum < 50 ? 'var(--planck-color)' : planckColor;
+                drawCurve(State.domain==='wavelength' ? Physics.planckWave.bind(Physics) : Physics.planckFreq.bind(Physics), pCol);
+                
+                // Draw Peak Marker
+                let peakX = State.domain === 'wavelength' ? 
+                            (Physics.b / State.T) * 1e6 : 
+                            ((2.821439 * Physics.kb * State.T) / Physics.h) * 1e-12;
+                
+                if (peakX >= xRange.min && peakX <= xRange.max) {
+                    let peakY = State.domain === 'wavelength' ? 
+                                Physics.planckWave(peakX * 1e-6, State.T) : 
+                                Physics.planckFreq(peakX, State.T);
+                    
+                    let ppx = mapX(peakX);
+                    let ppy = mapY(peakY);
+                    
+                    if (ppy >= graphBounds.y && ppy <= graphBounds.y + graphBounds.h) {
+                        ctx.beginPath();
+                        ctx.arc(ppx, ppy, 5, 0, Math.PI*2);
+                        ctx.fillStyle = pCol;
+                        ctx.fill();
+                        ctx.strokeStyle = "#fff";
+                        ctx.stroke();
+
+                        ctx.fillStyle = pCol;
+                        ctx.textAlign = "center";
+                        ctx.fillText("λ_max", ppx, ppy - 15);
+                    }
+                }
+            }
+        }
+
+        /**
+         * INTERACTION & EVENTS
+         */
+        function bindEvents() {
+            window.addEventListener('resize', resizeCanvas);
+
+            DOM.sliders.t.addEventListener('input', (e) => {
+                State.T = parseInt(e.target.value);
+                DOM.vals.t.textContent = State.T + " K";
+                updateStats();
+                draw();
+            });
+
+            DOM.sliders.xmax.addEventListener('input', (e) => {
+                let val = parseFloat(e.target.value);
+                if (State.domain === 'wavelength') {
+                    State.xMaxW = val;
+                    DOM.vals.xmax.textContent = val.toFixed(1) + " μm";
+                } else {
+                    State.xMaxF = val;
+                    DOM.vals.xmax.textContent = val.toFixed(0) + " THz";
+                }
+                draw();
+            });
+
+            DOM.chks.logy.addEventListener('change', (e) => { State.logY = e.target.checked; draw(); });
+            DOM.chks.planck.addEventListener('change', (e) => { State.showPlanck = e.target.checked; draw(); });
+            DOM.chks.rj.addEventListener('change', (e) => { State.showRJ = e.target.checked; draw(); });
+            DOM.chks.wien.addEventListener('change', (e) => { State.showWien = e.target.checked; draw(); });
+            DOM.chks.vis.addEventListener('change', (e) => { State.showVis = e.target.checked; draw(); });
+
+            // Tooltip logic
+            DOM.canvas.addEventListener('mousemove', (e) => {
+                const rect = DOM.canvas.getBoundingClientRect();
+                const xPx = e.clientX - rect.left;
+                const yPx = e.clientY - rect.top;
+
+                if (xPx >= graphBounds.x && xPx <= graphBounds.x + graphBounds.w && 
+                    yPx >= graphBounds.y && yPx <= graphBounds.y + graphBounds.h) {
+                    
+                    const xRange = getXRange();
+                    const xVal = xRange.min + ((xPx - graphBounds.x) / graphBounds.w) * (xRange.max - xRange.min);
+                    
+                    let html = `<div style="margin-bottom:8px; border-bottom:1px solid #475569; padding-bottom:4px;">
+                        ${State.domain==='wavelength' ? 'λ' : 'ν'} = ${xVal.toFixed(3)} ${State.domain==='wavelength'?'μm':'THz'}
+                    </div>`;
+
+                    const addRow = (name, val, color) => {
+                        html += `<div class="tooltip-row">
+                            <span style="color:${color}; display:flex; align-items:center; gap:5px;">
+                                <span class="legend-color" style="background:${color}; width:8px; height:8px;"></span>${name}
+                            </span>
+                            <span class="tooltip-val">${formatScientific(val, 2)}</span>
+                        </div>`;
+                    };
+
+                    if (State.showPlanck) {
+                        let y = State.domain==='wavelength' ? Physics.planckWave(xVal*1e-6, State.T) : Physics.planckFreq(xVal, State.T);
+                        addRow("Planck", y, 'var(--planck-color)');
+                    }
+                    if (State.showRJ) {
+                        let y = State.domain==='wavelength' ? Physics.rjWave(xVal*1e-6, State.T) : Physics.rjFreq(xVal, State.T);
+                        addRow("Rayleigh-Jeans", y, 'var(--rj-color)');
+                    }
+                    if (State.showWien) {
+                        let y = State.domain==='wavelength' ? Physics.wienWave(xVal*1e-6, State.T) : Physics.wienFreq(xVal, State.T);
+                        addRow("Wien", y, 'var(--wien-color)');
+                    }
+
+                    DOM.tooltip.innerHTML = html;
+                    DOM.tooltip.style.display = 'block';
+                    
+                    // Positioning
+                    let ttX = e.clientX + 15;
+                    let ttY = e.clientY + 15;
+                    if (ttX + DOM.tooltip.offsetWidth > window.innerWidth) ttX = e.clientX - DOM.tooltip.offsetWidth - 15;
+                    if (ttY + DOM.tooltip.offsetHeight > window.innerHeight) ttY = e.clientY - DOM.tooltip.offsetHeight - 15;
+                    
+                    DOM.tooltip.style.left = ttX + 'px';
+                    DOM.tooltip.style.top = ttY + 'px';
+                } else {
+                    DOM.tooltip.style.display = 'none';
+                }
+            });
+
+            DOM.canvas.addEventListener('mouseleave', () => {
+                DOM.tooltip.style.display = 'none';
+            });
+        }
+
+        function setDomain(dom) {
+            State.domain = dom;
+            document.getElementById('btn-wave').classList.toggle('active', dom === 'wavelength');
+            document.getElementById('btn-freq').classList.toggle('active', dom === 'frequency');
+            
+            if (dom === 'wavelength') {
+                DOM.labels.xmax.textContent = "Max Wavelength";
+                DOM.sliders.xmax.min = 0.5;
+                DOM.sliders.xmax.max = 20;
+                DOM.sliders.xmax.step = 0.1;
+                DOM.sliders.xmax.value = State.xMaxW;
+                DOM.vals.xmax.textContent = State.xMaxW.toFixed(1) + " μm";
+            } else {
+                DOM.labels.xmax.textContent = "Max Frequency";
+                DOM.sliders.xmax.min = 100;
+                DOM.sliders.xmax.max = 5000;
+                DOM.sliders.xmax.step = 10;
+                DOM.sliders.xmax.value = State.xMaxF;
+                DOM.vals.xmax.textContent = State.xMaxF.toFixed(0) + " THz";
+            }
+            draw();
+        }
+
+        function animateTemperature() {
+            const btn = document.getElementById('btn-animate');
+            if (State.isAnimating) {
+                State.isAnimating = false;
+                cancelAnimationFrame(State.animId);
+                btn.textContent = "✨ Animate Stellar Evolution";
+                DOM.sliders.t.disabled = false;
+                return;
+            }
+
+            State.isAnimating = true;
+            btn.textContent = "🛑 Stop Animation";
+            DOM.sliders.t.disabled = true;
+
+            let currentT = 3000; // Start at red dwarf
+            const targetT = 12000; // End at blue giant
+            const step = 25; // K per frame
+
+            function stepAnim() {
+                if (!State.isAnimating) return;
+                currentT += step;
+                if (currentT > targetT) {
+                    currentT = 3000; // Loop back
+                }
+                
+                State.T = currentT;
+                DOM.sliders.t.value = currentT;
+                DOM.vals.t.textContent = currentT + " K";
+                
+                // Auto-adjust X axis slightly to keep peak visible
+                if (State.domain === 'wavelength') {
+                    let optimalX = (Physics.b / currentT) * 1e6 * 4; // Show up to 4x peak
+                    if (optimalX < 0.5) optimalX = 0.5;
+                    if (optimalX > 20) optimalX = 20;
+                    State.xMaxW = optimalX;
+                    DOM.sliders.xmax.value = optimalX;
+                    DOM.vals.xmax.textContent = optimalX.toFixed(1) + " μm";
+                }
+
+                updateStats();
+                draw();
+                State.animId = requestAnimationFrame(stepAnim);
+            }
+            stepAnim();
+        }
+
+        function toggleTheory() {
+            const modal = document.getElementById('theory-modal');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function exportGraph() {
+            const link = document.createElement('a');
+            link.download = `blackbody_spectrum_${State.T}K.png`;
+            link.href = DOM.canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // INIT
+        bindEvents();
+        updateStats();
+        // Wait a tick for layout to settle, then draw
+        setTimeout(() => {
+            resizeCanvas();
+        }, 100);
+
+    </script>
+</body>
+</html>

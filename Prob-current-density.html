@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Probability Flow & Continuity Equation</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+
+    <style>
+        :root {
+            --bg-color: #05050a;
+            --panel-bg: rgba(20, 20, 35, 0.7);
+            --panel-border: rgba(100, 150, 255, 0.2);
+            --text-main: #e2e8f0;
+            --accent-glow: 0 0 10px rgba(96, 165, 250, 0.5);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            overflow: hidden; /* App-like layout */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 0.75rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(100,150,255,0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(100,150,255,0.5); }
+
+        /* Range Sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #60a5fa;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: var(--accent-glow);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+        input[type=range]:focus { outline: none; }
+
+        .tooltip-icon {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            font-size: 10px;
+            cursor: help;
+            margin-left: 4px;
+        }
+
+        #canvas-container {
+            position: relative;
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Layout Grid */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            grid-template-rows: auto 1fr auto;
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0; left: 0;
+            pointer-events: none; /* Let clicks pass through to 3D canvas by default */
+        }
+        
+        .pointer-events-auto { pointer-events: auto; }
+        
+        .math-box {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .status-badge.success { color: #4ade80; text-shadow: 0 0 8px rgba(74, 222, 128, 0.4); }
+        .status-badge.error { color: #f87171; text-shadow: 0 0 8px rgba(248, 113, 113, 0.4); }
+
+        .btn {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .btn:hover { background: rgba(59, 130, 246, 0.4); box-shadow: var(--accent-glow); }
+        .btn.active { background: rgba(59, 130, 246, 0.6); }
+        
+        .explain-overlay {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #3b82f6;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 250px;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+        .show-explain .explain-target:hover + .explain-overlay { opacity: 1; }
+
+    </style>
+</head>
+<body>
+
+    <!-- 3D Canvas Background -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay Layer -->
+    <div class="app-layout p-4 gap-4">
+        
+        <!-- HEADER -->
+        <header class="glass-panel pointer-events-auto col-span-3 p-3 flex justify-between items-center z-10">
+            <div>
+                <h1 class="text-xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">QUANTUM PROBABILITY FLOW</h1>
+                <p class="text-xs text-gray-400">3D Probability Density • Probability Current • Continuity Equation</p>
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-explain" class="btn">Toggle Explain Mode</button>
+                <button id="btn-preset-reset" class="btn bg-blue-600/40 border-blue-400">Reset to Recommended</button>
+            </div>
+        </header>
+
+        <!-- LEFT PANEL: Quantum State -->
+        <aside class="glass-panel pointer-events-auto flex flex-col gap-4 p-4 overflow-y-auto z-10">
+            <h2 class="font-semibold text-blue-300 border-b border-blue-500/30 pb-1">Quantum State Configuration</h2>
+            
+            <div class="flex flex-col gap-1">
+                <label class="text-xs text-gray-400">State Preset</label>
+                <select id="state-selector" class="bg-black/50 border border-gray-600 rounded p-1 text-sm text-white focus:outline-none focus:border-blue-500">
+                    <option value="gaussian">Free Gaussian Wave Packet</option>
+                    <option value="standing">Stationary State (Infinite Well)</option>
+                    <option value="superposition">Two-State Superposition</option>
+                    <option value="plane">Traveling Wave (Uniform)</option>
+                </select>
+            </div>
+
+            <!-- Dynamic Parameters (Shown/Hidden based on state) -->
+            <div id="param-group" class="flex flex-col gap-3 mt-2">
+                <!-- Gaussian Params -->
+                <div class="param-gaussian flex flex-col gap-1">
+                    <div class="flex justify-between text-xs text-gray-300"><label>Momentum ($p = \hbar k$)</label><span id="val-k">2.0</span></div>
+                    <input type="range" id="slider-k" min="-10" max="10" step="0.1" value="2.0">
+                </div>
+                <div class="param-gaussian flex flex-col gap-1">
+                    <div class="flex justify-between text-xs text-gray-300"><label>Width ($\sigma$)</label><span id="val-sigma">1.0</span></div>
+                    <input type="range" id="slider-sigma" min="0.2" max="3.0" step="0.1" value="1.0">
+                </div>
+                <div class="param-gaussian flex flex-col gap-1">
+                    <div class="flex justify-between text-xs text-gray-300"><label>Initial Position ($x_0$)</label><span id="val-x0">-5.0</span></div>
+                    <input type="range" id="slider-x0" min="-8" max="8" step="0.1" value="-5.0">
+                </div>
+
+                <!-- Standing/Superposition Params -->
+                <div class="param-standing param-superposition hidden flex flex-col gap-1">
+                    <div class="flex justify-between text-xs text-gray-300"><label>State $n_1$</label><span id="val-n1">1</span></div>
+                    <input type="range" id="slider-n1" min="1" max="10" step="1" value="1">
+                </div>
+                <div class="param-superposition hidden flex flex-col gap-1">
+                    <div class="flex justify-between text-xs text-gray-300"><label>State $n_2$</label><span id="val-n2">2</span></div>
+                    <input type="range" id="slider-n2" min="1" max="10" step="1" value="2">
+                </div>
+                <div class="param-superposition hidden flex flex-col gap-1">
+                    <div class="flex justify-between text-xs text-gray-300"><label>Mix Ratio ($c_1 : c_2$)</label><span id="val-mix">0.5</span></div>
+                    <input type="range" id="slider-mix" min="0" max="1" step="0.05" value="0.5">
+                </div>
+                
+                <!-- General Params -->
+                <div class="flex flex-col gap-1 pt-2 border-t border-gray-700">
+                    <div class="flex justify-between text-xs text-gray-300"><label>Particle Mass ($m$)</label><span id="val-m">1.0</span></div>
+                    <input type="range" id="slider-m" min="0.1" max="5.0" step="0.1" value="1.0">
+                </div>
+            </div>
+
+            <div class="mt-auto flex flex-col gap-2">
+                <h3 class="text-xs font-semibold text-gray-400">Simulation Controls</h3>
+                <div class="flex justify-between items-center gap-2">
+                    <button id="btn-play" class="btn flex-1 bg-green-900/30 border-green-500">Pause</button>
+                    <button id="btn-reset-time" class="btn flex-1">Reset Time</button>
+                </div>
+                <div class="flex flex-col gap-1 mt-1">
+                    <div class="flex justify-between text-xs text-gray-300"><label>Sim Speed</label><span id="val-speed">1x</span></div>
+                    <input type="range" id="slider-speed" min="0" max="5" step="0.1" value="1">
+                </div>
+            </div>
+            
+            <div class="flex flex-col gap-2 mt-2 pt-2 border-t border-gray-700">
+                <h3 class="text-xs font-semibold text-gray-400">View Toggles</h3>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="toggle-density" checked> Density Vol</label>
+                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="toggle-current" checked> Current Arrows</label>
+                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="toggle-particles" checked> Flow Particles</label>
+                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="toggle-grid" checked> Grid/Axes</label>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER: Empty space for 3D View (handled by grid) -->
+        <div class="col-start-2 row-start-2 pointer-events-none flex flex-col justify-end items-center pb-4">
+            <!-- Optional floating labels in 3D space represented in HTML -->
+            <div class="glass-panel pointer-events-auto p-3 text-sm flex gap-4 max-w-2xl bg-black/60">
+                <div class="explain-target"><strong>Blue Surface:</strong> Probability Density $\rho = |\psi|^2$</div>
+                <div class="explain-target"><strong>Arrows:</strong> Probability Current $\mathbf{J}$</div>
+                <div class="explain-target"><strong>Particles:</strong> Propagating along flow lines</div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Continuity Diagnostics -->
+        <aside class="glass-panel pointer-events-auto flex flex-col gap-4 p-4 overflow-y-auto z-10">
+            <h2 class="font-semibold text-red-300 border-b border-red-500/30 pb-1">Continuity Equation</h2>
+            
+            <div class="math-box text-lg">
+                $$ \frac{\partial\rho}{\partial t} + \nabla\cdot\mathbf{J} = 0 $$
+            </div>
+
+            <div class="flex flex-col gap-2 text-sm bg-black/40 p-3 rounded border border-gray-700">
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Continuity Status:</span>
+                    <span id="status-continuity" class="status-badge success font-bold">SATISFIED ✓</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Max Residual $\epsilon$:</span>
+                    <span id="val-residual" class="font-mono text-xs">0.000e+0</span>
+                </div>
+            </div>
+
+            <h3 class="font-semibold text-cyan-300 border-b border-cyan-500/30 pb-1 mt-2">Observables</h3>
+            <div class="flex flex-col gap-1 text-sm font-mono bg-black/40 p-2 rounded">
+                <div class="flex justify-between"><span>Norm $\int \rho dx$</span> <span id="val-norm">1.000</span></div>
+                <div class="flex justify-between"><span>$\langle x \rangle$</span> <span id="val-exp-x">0.000</span></div>
+                <div class="flex justify-between"><span>$\langle p \rangle$</span> <span id="val-exp-p">0.000</span></div>
+                <div class="flex justify-between"><span>$\Delta x$</span> <span id="val-dx">0.000</span></div>
+                <div class="flex justify-between"><span>$\Delta p$</span> <span id="val-dp">0.000</span></div>
+                <div class="flex justify-between text-yellow-300 border-t border-gray-700 pt-1 mt-1">
+                    <span>$\Delta x \Delta p \ge 0.5$</span> <span id="val-dxdp">0.000</span>
+                </div>
+            </div>
+
+            <h3 class="font-semibold text-green-300 border-b border-green-500/30 pb-1 mt-2">Control Volume Expr.</h3>
+            <div class="text-xs text-gray-400 mb-1">Region $V = [-2, 2]$</div>
+            <div class="flex flex-col gap-1 text-sm font-mono bg-black/40 p-2 rounded">
+                <div class="flex justify-between"><span>Prob in $V$ ($P_V$):</span> <span id="val-pv">0.000</span></div>
+                <div class="flex justify-between"><span>Rate $dP_V/dt$:</span> <span id="val-dpv">0.000</span></div>
+                <div class="flex justify-between"><span>Net Flux $\Phi_J$:</span> <span id="val-flux">0.000</span></div>
+            </div>
+            
+            <div id="explain-box" class="mt-auto hidden bg-blue-900/40 p-3 rounded border border-blue-500 text-sm">
+                <h4 class="font-bold text-blue-300 mb-1">Explain Mode</h4>
+                <p id="explain-text" class="text-gray-200">Hover over elements for physical meaning.</p>
+            </div>
+        </aside>
+
+        <!-- BOTTOM: Analysis Charts -->
+        <footer class="glass-panel pointer-events-auto col-span-3 row-start-3 h-48 flex gap-4 p-3 z-10">
+            <div class="flex-1 bg-black/50 rounded p-1 relative">
+                <span class="absolute top-1 left-2 text-xs font-bold text-gray-400 z-10">Density & Current</span>
+                <canvas id="chart-rho-j"></canvas>
+            </div>
+            <div class="flex-1 bg-black/50 rounded p-1 relative">
+                <span class="absolute top-1 left-2 text-xs font-bold text-gray-400 z-10">Continuity Equation Match</span>
+                <div class="absolute top-1 right-2 text-[10px] text-gray-400 z-10 flex gap-2">
+                    <span style="color: #f472b6;">● $\partial\rho/\partial t$</span>
+                    <span style="color: #60a5fa;">● $-\nabla\cdot J$</span>
+                </div>
+                <canvas id="chart-continuity"></canvas>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // ---------------------------------------------------------
+        // MATH & PHYSICS ENGINE
+        // ---------------------------------------------------------
+        
+        // Complex Number Utility
+        class Complex {
+            constructor(re, im=0) { this.re = re; this.im = im; }
+            static add(a, b) { return new Complex(a.re + b.re, a.im + b.im); }
+            static sub(a, b) { return new Complex(a.re - b.re, a.im - b.im); }
+            static mul(a, b) { return new Complex(a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re); }
+            static div(a, b) { 
+                const den = b.re*b.re + b.im*b.im;
+                return new Complex((a.re*b.re + a.im*b.im)/den, (a.im*b.re - a.re*b.im)/den);
+            }
+            static mulReal(a, r) { return new Complex(a.re * r, a.im * r); }
+            static exp(a) { 
+                const ea = Math.exp(a.re);
+                return new Complex(ea * Math.cos(a.im), ea * Math.sin(a.im));
+            }
+            static conj(a) { return new Complex(a.re, -a.im); }
+            magSq() { return this.re*this.re + this.im*this.im; }
+            mag() { return Math.sqrt(this.magSq()); }
+        }
+
+        // Physics Global State
+        const PHYS = {
+            hbar: 1,
+            m: 1,
+            L: 20,          // Domain [-10, 10]
+            N: 400,         // Grid points
+            dx: 0,
+            x: [],
+            psi: [],        // Current wavefunction
+            rho: [],        // |psi|^2
+            rho_prev: [],   // Previous step for time derivative
+            J: [],          // Probability current
+            divJ: [],       // Divergence of J
+            drho_dt: [],    // Time derivative of rho
+            
+            // Simulation params
+            stateType: 'gaussian',
+            t: 0,
+            dt: 0.05,
+            isPlaying: true,
+            
+            // State-specific params
+            k: 2.0, sigma: 1.0, x0: -5.0,
+            n1: 1, n2: 2, mix: 0.5,
+            
+            initGrid() {
+                this.dx = this.L / (this.N - 1);
+                for(let i=0; i<this.N; i++) {
+                    this.x[i] = -this.L/2 + i * this.dx;
+                    this.psi[i] = new Complex(0);
+                    this.rho[i] = 0;
+                    this.rho_prev[i] = 0;
+                    this.J[i] = 0;
+                    this.divJ[i] = 0;
+                    this.drho_dt[i] = 0;
+                }
+            },
+
+            // --- Wavefunction Generators ---
+            
+            calcGaussian(xi, t) {
+                // Analytical solution for free Gaussian packet
+                // psi(x,t) = (1/(2*pi*s^2))^(1/4) * (1/sqrt(gamma)) * exp( ... )
+                // gamma = 1 + i*hbar*t / (2*m*s^2)
+                const s2 = this.sigma * this.sigma;
+                const gamma_im = (this.hbar * t) / (2 * this.m * s2);
+                const gamma = new Complex(1, gamma_im);
+                
+                // Normalization constant N0 = (2*pi*s2)^(-1/4) / sqrt(mag(gamma))
+                // Actually mathematically cleaner to use full complex sqrt, but magnitude works for norm.
+                // Let's build exponent: - (x-x0)^2 / (4*s2*gamma) + i*k*(x-x0) - i*hbar*k^2*t/(2*m)
+                
+                const dx = xi - this.x0;
+                const term1_num = new Complex(-dx*dx / (4*s2), 0);
+                const term1 = Complex.div(term1_num, gamma);
+                const term2 = new Complex(0, this.k * dx);
+                const term3 = new Complex(0, -(this.hbar * this.k * this.k * t) / (2 * this.m));
+                
+                const exponent = Complex.add(Complex.add(term1, term2), term3);
+                
+                // Phase of 1/sqrt(gamma): gamma = r*e^{i*theta} -> gamma^{-1/2} = r^{-1/2} e^{-i*theta/2}
+                const r = gamma.mag();
+                const theta = Math.atan2(gamma.im, gamma.re);
+                const normFactor = Math.pow(2 * Math.PI * s2, -0.25) / Math.sqrt(r);
+                const prefactor = new Complex(normFactor * Math.cos(-theta/2), normFactor * Math.sin(-theta/2));
+                
+                return Complex.mul(prefactor, Complex.exp(exponent));
+            },
+
+            calcStationary(xi, n, t) {
+                // Infinite well from [-L/2, L/2]
+                if (xi <= -this.L/2 || xi >= this.L/2) return new Complex(0);
+                const kn = (n * Math.PI) / this.L;
+                const En = (this.hbar * this.hbar * kn * kn) / (2 * this.m);
+                const amp = Math.sqrt(2 / this.L) * Math.sin(kn * (xi + this.L/2));
+                return Complex.mulReal(Complex.exp(new Complex(0, -En * t / this.hbar)), amp);
+            },
+
+            calcSuperposition(xi, t) {
+                const psi1 = this.calcStationary(xi, this.n1, t);
+                const psi2 = this.calcStationary(xi, this.n2, t);
+                const c1 = Math.sqrt(this.mix);
+                const c2 = Math.sqrt(1 - this.mix);
+                return Complex.add(Complex.mulReal(psi1, c1), Complex.mulReal(psi2, c2));
+            },
+
+            calcPlaneWave(xi, t) {
+                // Uniform density, constant current. Normalization arbitrarily set to 1/L.
+                const A = 1 / Math.sqrt(this.L);
+                const omega = (this.hbar * this.k * this.k) / (2 * this.m);
+                const phase = this.k * xi - omega * t;
+                return new Complex(A * Math.cos(phase), A * Math.sin(phase));
+            },
+
+            updateState(deltaTime) {
+                if (!this.isPlaying) return;
+                
+                // Save previous rho for time derivative
+                for(let i=0; i<this.N; i++) {
+                    this.rho_prev[i] = this.rho[i];
+                }
+
+                this.t += deltaTime;
+
+                // 1. Calculate Wavefunction & Probability Density
+                let totalNorm = 0;
+                for(let i=0; i<this.N; i++) {
+                    const xi = this.x[i];
+                    if (this.stateType === 'gaussian') this.psi[i] = this.calcGaussian(xi, this.t);
+                    else if (this.stateType === 'standing') this.psi[i] = this.calcStationary(xi, this.n1, this.t);
+                    else if (this.stateType === 'superposition') this.psi[i] = this.calcSuperposition(xi, this.t);
+                    else if (this.stateType === 'plane') this.psi[i] = this.calcPlaneWave(xi, this.t);
+                    
+                    this.rho[i] = this.psi[i].magSq();
+                    totalNorm += this.rho[i] * this.dx;
+                }
+
+                // 2. Calculate Probability Current J = (hbar/m) * Im(psi* dpsi/dx)
+                // Use central difference for spatial derivatives
+                for(let i=1; i<this.N-1; i++) {
+                    // dpsi/dx = (psi[i+1] - psi[i-1]) / (2*dx)
+                    const dpsi_dx = Complex.mulReal(Complex.sub(this.psi[i+1], this.psi[i-1]), 1/(2*this.dx));
+                    const psi_conj = Complex.conj(this.psi[i]);
+                    const term = Complex.mul(psi_conj, dpsi_dx);
+                    this.J[i] = (this.hbar / this.m) * term.im;
+                }
+                // Boundaries (approx 0 for confined states)
+                this.J[0] = this.J[1]; 
+                this.J[this.N-1] = this.J[this.N-2];
+                if(this.stateType === 'plane') {
+                    this.J[0] = this.J[this.N/2 | 0]; // Constant
+                    this.J[this.N-1] = this.J[0];
+                }
+
+                // 3. Calculate Divergence (dJ/dx) and Time Derivative (drho/dt)
+                let maxResidual = 0;
+                for(let i=1; i<this.N-1; i++) {
+                    this.divJ[i] = (this.J[i+1] - this.J[i-1]) / (2*this.dx);
+                    
+                    // Backward difference for time
+                    if (deltaTime > 0) {
+                        this.drho_dt[i] = (this.rho[i] - this.rho_prev[i]) / deltaTime;
+                    }
+                    
+                    // Continuity Equation Residual: e = drho/dt + divJ
+                    // Note: Numerical artifacts might exist, but visually they should balance
+                    const residual = Math.abs(this.drho_dt[i] + this.divJ[i]);
+                    if (residual > maxResidual && this.rho[i] > 1e-4) maxResidual = residual;
+                }
+                
+                return { norm: totalNorm, residual: maxResidual };
+            },
+
+            // Observables
+            calcObservables() {
+                let expX = 0, expX2 = 0, expP = 0, expP2 = 0;
+                for(let i=1; i<this.N-1; i++) {
+                    const xi = this.x[i];
+                    const r = this.rho[i];
+                    expX += xi * r * this.dx;
+                    expX2 += xi * xi * r * this.dx;
+                    
+                    // P expectation: Re( psi* (hbar/i) dpsi/dx )
+                    const dpsi_dx = Complex.mulReal(Complex.sub(this.psi[i+1], this.psi[i-1]), 1/(2*this.dx));
+                    const p_term = Complex.mul(Complex.conj(this.psi[i]), new Complex(0, -this.hbar));
+                    const integrand = Complex.mul(p_term, dpsi_dx).re; // Wait, (hbar/i) = -i*hbar. Correct.
+                    // Actually p = -i hbar d/dx.  psi* (-i hbar) dpsi/dx.
+                    const p_op = new Complex(0, -this.hbar);
+                    const apply_p = Complex.mul(p_op, dpsi_dx);
+                    expP += Complex.mul(Complex.conj(this.psi[i]), apply_p).re * this.dx;
+                    
+                    // P^2 expectation: psi* (-hbar^2) d^2psi/dx^2
+                    const d2psi_dx2 = Complex.mulReal(
+                        Complex.add(Complex.add(this.psi[i+1], this.psi[i-1]), Complex.mulReal(this.psi[i], -2)), 
+                        1/(this.dx*this.dx)
+                    );
+                    expP2 += Complex.mul(Complex.conj(this.psi[i]), Complex.mulReal(d2psi_dx2, -this.hbar*this.hbar)).re * this.dx;
+                }
+                const dx = Math.sqrt(Math.max(0, expX2 - expX*expX));
+                const dp = Math.sqrt(Math.max(0, expP2 - expP*expP));
+                return { expX, expP, dx, dp, dxdp: dx*dp };
+            },
+
+            // Control Volume [-2, 2]
+            calcControlVolume() {
+                const idx1 = Math.floor(this.N/2 - 2/this.dx);
+                const idx2 = Math.floor(this.N/2 + 2/this.dx);
+                let PV = 0;
+                let dPV = 0;
+                for(let i=idx1; i<=idx2; i++) {
+                    PV += this.rho[i] * this.dx;
+                    dPV += this.drho_dt[i] * this.dx;
+                }
+                const fluxIn = this.J[idx1] - this.J[idx2]; // Flow in at left, out at right
+                return { PV, dPV, fluxIn };
+            }
+        };
+        
+        PHYS.initGrid();
+
+        // ---------------------------------------------------------
+        // THREE.JS 3D VISUALIZATION
+        // ---------------------------------------------------------
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x05050a, 0.03);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(0, 8, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 40;
+
+        // Visual Elements
+        // 1. Grid and Axes
+        const gridHelper = new THREE.GridHelper(20, 20, 0x334455, 0x112233);
+        gridHelper.position.y = -0.1;
+        scene.add(gridHelper);
+        
+        const axesHelper = new THREE.AxesHelper(2);
+        axesHelper.position.set(-10, 0, 0);
+        scene.add(axesHelper);
+
+        // 2. Probability Density Surface (pseudo-3D volumetric look using a thick mesh)
+        // We'll create a plane and deform its Z/Y vertices to make a "wall" or "tube".
+        // Let's use a dense tube/ribbon along X.
+        const densityGeom = new THREE.PlaneGeometry(20, 2, PHYS.N - 1, 1);
+        densityGeom.rotateX(-Math.PI/2); // Lie flat initially
+        const densityMat = new THREE.MeshPhongMaterial({
+            color: 0x3b82f6,
+            emissive: 0x1e3a8a,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide,
+            wireframe: false,
+            shininess: 100
+        });
+        const densityMesh = new THREE.Mesh(densityGeom, densityMat);
+        scene.add(densityMesh);
+
+        // Add a wireframe over it for sci-fi look
+        const wireframeMat = new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.3 });
+        const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(densityGeom), wireframeMat);
+        scene.add(wireframe);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0x404040); // soft white light
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 7);
+        scene.add(directionalLight);
+
+        // 3. Probability Current Arrows
+        const arrows = [];
+        const numArrows = 40; // Reduced density for clarity
+        const arrowSpacing = Math.floor(PHYS.N / numArrows);
+        for(let i=0; i<numArrows; i++) {
+            const dir = new THREE.Vector3(1, 0, 0);
+            const origin = new THREE.Vector3(-10 + i * (20/numArrows), 0, 0);
+            const arrow = new THREE.ArrowHelper(dir, origin, 0.1, 0xff3366, 0.2, 0.1);
+            arrows.push(arrow);
+            scene.add(arrow);
+        }
+
+        // 4. Flow Particles
+        const particleCount = 300;
+        const particleGeom = new THREE.BufferGeometry();
+        const pPositions = new Float32Array(particleCount * 3);
+        const pVelocities = new Float32Array(particleCount); // Store 1D velocity
+        for(let i=0; i<particleCount; i++) {
+            pPositions[i*3] = (Math.random() - 0.5) * 20; // x
+            pPositions[i*3+1] = 0.5 + Math.random();      // y
+            pPositions[i*3+2] = (Math.random() - 0.5) * 2;  // z
+            pVelocities[i] = 0;
+        }
+        particleGeom.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+        const particleMat = new THREE.PointsMaterial({
+            color: 0xfcb045, size: 0.15, transparent: true, opacity: 0.8,
+            map: createCircleTexture(), blending: THREE.AdditiveBlending, depthWrite: false
+        });
+        const particles = new THREE.Points(particleGeom, particleMat);
+        scene.add(particles);
+
+        // Helper for soft particle texture
+        function createCircleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0,0,32,32);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // 5. Control Volume Box
+        const cvGeom = new THREE.BoxGeometry(4, 4, 4); // x from -2 to 2
+        const cvMat = new THREE.MeshBasicMaterial({color: 0x4ade80, wireframe: true, transparent: true, opacity: 0.2});
+        const cvBox = new THREE.Mesh(cvGeom, cvMat);
+        cvBox.position.set(0, 2, 0);
+        scene.add(cvBox);
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+
+        // ---------------------------------------------------------
+        // CHART.JS SETUP
+        // ---------------------------------------------------------
+        Chart.defaults.color = '#9ca3af';
+        Chart.defaults.font.family = 'Inter';
+        
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false, // Update manually for performance
+            elements: { point: { radius: 0 } },
+            scales: {
+                x: { display: false, min: -10, max: 10 },
+                y: { grid: { color: 'rgba(255,255,255,0.1)' } }
+            },
+            plugins: { legend: { display: false } }
+        };
+
+        const ctx1 = document.getElementById('chart-rho-j').getContext('2d');
+        const chartRhoJ = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: PHYS.x,
+                datasets: [
+                    { label: 'Density ρ', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.2)', fill: true, tension: 0.2 },
+                    { label: 'Current J', data: [], borderColor: '#f43f5e', borderWidth: 2, tension: 0.2 }
+                ]
+            },
+            options: { ...commonOptions, scales: { x: { display: true }, y: { min: -0.5, max: 1.5, grid: { color: 'rgba(255,255,255,0.1)' } } } }
+        });
+
+        const ctx2 = document.getElementById('chart-continuity').getContext('2d');
+        const chartCont = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: PHYS.x,
+                datasets: [
+                    { label: 'dρ/dt', data: [], borderColor: '#f472b6', borderWidth: 2, borderDash: [5, 5], tension: 0.1 },
+                    { label: '-∇·J', data: [], borderColor: '#60a5fa', borderWidth: 2, tension: 0.1 }
+                ]
+            },
+            options: { ...commonOptions, scales: { x: { display: true }, y: { min: -0.5, max: 0.5, grid: { color: 'rgba(255,255,255,0.1)' } } } }
+        });
+
+
+        // ---------------------------------------------------------
+        // UI BINDINGS & LOGIC
+        // ---------------------------------------------------------
+        
+        // Element refs
+        const els = {
+            stateSelector: document.getElementById('state-selector'),
+            play: document.getElementById('btn-play'),
+            resetTime: document.getElementById('btn-reset-time'),
+            presetReset: document.getElementById('btn-preset-reset'),
+            speed: document.getElementById('slider-speed'),
+            // Toggles
+            tDens: document.getElementById('toggle-density'),
+            tCurr: document.getElementById('toggle-current'),
+            tPart: document.getElementById('toggle-particles'),
+            tGrid: document.getElementById('toggle-grid'),
+            // Displays
+            norm: document.getElementById('val-norm'),
+            residual: document.getElementById('val-residual'),
+            statCont: document.getElementById('status-continuity'),
+            expX: document.getElementById('val-exp-x'),
+            expP: document.getElementById('val-exp-p'),
+            dx: document.getElementById('val-dx'),
+            dp: document.getElementById('val-dp'),
+            dxdp: document.getElementById('val-dxdp'),
+            pv: document.getElementById('val-pv'),
+            dpv: document.getElementById('val-dpv'),
+            flux: document.getElementById('val-flux')
+        };
+
+        // Slider bindings
+        function bindSlider(id, physKey, valId) {
+            const slider = document.getElementById(id);
+            const valSpan = document.getElementById(valId);
+            slider.addEventListener('input', (e) => {
+                PHYS[physKey] = parseFloat(e.target.value);
+                valSpan.innerText = PHYS[physKey].toFixed(2);
+                if (!PHYS.isPlaying) updateAndRender(0); // Force render if paused
+            });
+        }
+        
+        bindSlider('slider-k', 'k', 'val-k');
+        bindSlider('slider-sigma', 'sigma', 'val-sigma');
+        bindSlider('slider-x0', 'x0', 'val-x0');
+        bindSlider('slider-m', 'm', 'val-m');
+        bindSlider('slider-n1', 'n1', 'val-n1');
+        bindSlider('slider-n2', 'n2', 'val-n2');
+        bindSlider('slider-mix', 'mix', 'val-mix');
+
+        // State selector logic
+        els.stateSelector.addEventListener('change', (e) => {
+            PHYS.stateType = e.target.value;
+            document.querySelectorAll('.param-gaussian, .param-standing, .param-superposition').forEach(el => el.classList.add('hidden'));
+            if(PHYS.stateType === 'gaussian') document.querySelectorAll('.param-gaussian').forEach(el => el.classList.remove('hidden'));
+            if(PHYS.stateType === 'standing') document.querySelectorAll('.param-standing').forEach(el => el.classList.remove('hidden'));
+            if(PHYS.stateType === 'superposition') document.querySelectorAll('.param-superposition').forEach(el => el.classList.remove('hidden'));
+            
+            // Auto adjust chart scales based on state
+            if(PHYS.stateType === 'plane') {
+                chartRhoJ.options.scales.y.max = 0.2;
+                chartCont.options.scales.y.max = 0.05; chartCont.options.scales.y.min = -0.05;
+            } else {
+                chartRhoJ.options.scales.y.max = 1.5;
+                chartCont.options.scales.y.max = 0.5; chartCont.options.scales.y.min = -0.5;
+            }
+            chartRhoJ.update(); chartCont.update();
+            PHYS.t = 0;
+        });
+
+        // Controls
+        els.play.addEventListener('click', () => {
+            PHYS.isPlaying = !PHYS.isPlaying;
+            els.play.innerText = PHYS.isPlaying ? "Pause" : "Play";
+            els.play.classList.toggle('bg-green-900/30');
+            els.play.classList.toggle('border-green-500');
+            els.play.classList.toggle('bg-gray-700/50');
+        });
+        
+        els.resetTime.addEventListener('click', () => { PHYS.t = 0; });
+        
+        els.presetReset.addEventListener('click', () => {
+            els.stateSelector.value = 'gaussian';
+            els.stateSelector.dispatchEvent(new Event('change'));
+            document.getElementById('slider-k').value = 2.0; PHYS.k = 2.0; document.getElementById('val-k').innerText = "2.0";
+            document.getElementById('slider-sigma').value = 1.0; PHYS.sigma = 1.0; document.getElementById('val-sigma').innerText = "1.0";
+            document.getElementById('slider-x0').value = -5.0; PHYS.x0 = -5.0; document.getElementById('val-x0').innerText = "-5.0";
+            document.getElementById('slider-m').value = 1.0; PHYS.m = 1.0; document.getElementById('val-m').innerText = "1.0";
+            els.speed.value = 1;
+            PHYS.t = 0;
+            if(!PHYS.isPlaying) els.play.click();
+            camera.position.set(0, 8, 15);
+            controls.target.set(0,0,0);
+        });
+
+        // Toggles
+        els.tDens.addEventListener('change', e => { densityMesh.visible = e.target.checked; wireframe.visible = e.target.checked; });
+        els.tCurr.addEventListener('change', e => { arrows.forEach(a => a.visible = e.target.checked); });
+        els.tPart.addEventListener('change', e => { particles.visible = e.target.checked; });
+        els.tGrid.addEventListener('change', e => { gridHelper.visible = e.target.checked; axesHelper.visible = e.target.checked; cvBox.visible = e.target.checked; });
+
+        // Explain mode
+        let explainMode = false;
+        document.getElementById('btn-explain').addEventListener('click', (e) => {
+            explainMode = !explainMode;
+            e.target.classList.toggle('active');
+            if(explainMode) document.body.classList.add('show-explain');
+            else document.body.classList.remove('show-explain');
+        });
+
+
+        // ---------------------------------------------------------
+        // MAIN ANIMATION LOOP
+        // ---------------------------------------------------------
+        
+        let frameCount = 0;
+
+        function updateAndRender(dt_real) {
+            
+            // 1. Physics Update
+            const simSpeed = parseFloat(els.speed.value);
+            const dt_sim = PHYS.dt * simSpeed;
+            const stats = PHYS.updateState(dt_sim);
+
+            if (stats) {
+                // Update UI text (throttle for DOM performance)
+                if (frameCount % 5 === 0) {
+                    els.norm.innerText = stats.norm.toFixed(4);
+                    els.residual.innerText = stats.residual.toExponential(2);
+                    
+                    if (stats.residual < 1e-2) {
+                        els.statCont.innerText = "SATISFIED ✓";
+                        els.statCont.className = "status-badge success font-bold";
+                    } else {
+                        els.statCont.innerText = "ERROR HIGH ⚠";
+                        els.statCont.className = "status-badge error font-bold";
+                    }
+
+                    const obs = PHYS.calcObservables();
+                    els.expX.innerText = obs.expX.toFixed(3);
+                    els.expP.innerText = obs.expP.toFixed(3);
+                    els.dx.innerText = obs.dx.toFixed(3);
+                    els.dp.innerText = obs.dp.toFixed(3);
+                    els.dxdp.innerText = obs.dxdp.toFixed(3);
+                    els.dxdp.style.color = obs.dxdp >= 0.49 ? '#4ade80' : '#f87171'; // hbar/2 = 0.5
+
+                    const cv = PHYS.calcControlVolume();
+                    els.pv.innerText = cv.PV.toFixed(4);
+                    els.dpv.innerText = cv.dPV.toFixed(4);
+                    els.flux.innerText = cv.fluxIn.toFixed(4);
+                }
+
+                // 2. Update Three.js Geometries
+                
+                // Update Density Surface (Y = rho * scale)
+                const posAttr = densityGeom.attributes.position;
+                const scaleY = 3.0; // Visual scaling for height
+                for (let i = 0; i < PHYS.N; i++) {
+                    const y = Math.min(PHYS.rho[i] * scaleY, 5); // cap height
+                    // The plane has 2 vertices per X coordinate (one front, one back for thickness)
+                    // Index mapping for PlaneGeometry oriented this way
+                    posAttr.setY(i, y);
+                    posAttr.setY(i + PHYS.N, y); 
+                }
+                posAttr.needsUpdate = true;
+                
+                // Optional: Color surface based on divergence (red=outflow, blue=inflow)
+                // Skip for now to keep the glowy blue aesthetic consistent, but could be added to vertex colors.
+
+                // Update Arrows (Current)
+                if (els.tCurr.checked) {
+                    for(let i=0; i<numArrows; i++) {
+                        const dataIdx = i * arrowSpacing;
+                        const jVal = PHYS.J[dataIdx];
+                        const mag = Math.abs(jVal) * 5.0; // Scale for visibility
+                        const dir = jVal >= 0 ? 1 : -1;
+                        arrows[i].setDirection(new THREE.Vector3(dir, 0, 0));
+                        arrows[i].setLength(Math.max(mag, 0.05), Math.min(mag*0.2, 0.2), Math.min(mag*0.1, 0.1));
+                        // Position slightly above the axis
+                        arrows[i].position.set(PHYS.x[dataIdx], 0.2, 0);
+                        
+                        // Color coding based on divergence
+                        const div = PHYS.divJ[dataIdx];
+                        if (div > 0.01) arrows[i].setColor(0xfca5a5); // Reddish (source)
+                        else if (div < -0.01) arrows[i].setColor(0x93c5fd); // Blueish (sink)
+                        else arrows[i].setColor(0xff3366); // Default pink
+                    }
+                }
+
+                // Update Particles (Velocity = J/rho)
+                if (els.tPart.checked && dt_sim > 0) {
+                    const positions = particles.geometry.attributes.position.array;
+                    for (let i = 0; i < particleCount; i++) {
+                        let px = positions[i*3];
+                        
+                        // Find local grid index
+                        let idx = Math.floor((px + 10) / PHYS.dx);
+                        if (idx < 0) idx = 0;
+                        if (idx >= PHYS.N - 1) idx = PHYS.N - 2;
+                        
+                        const rho = PHYS.rho[idx];
+                        const j = PHYS.J[idx];
+                        
+                        // Quantum velocity v = J / rho
+                        let v = 0;
+                        if (rho > 1e-4) {
+                            v = j / rho;
+                            // Clamp velocity for visual stability
+                            v = Math.max(-15, Math.min(15, v));
+                        }
+                        
+                        // Move particle
+                        positions[i*3] += v * dt_sim;
+                        
+                        // Reset particle if out of bounds or randomly (weighted implicitly by uniform reset)
+                        if (positions[i*3] > 10 || positions[i*3] < -10 || Math.random() < 0.01) {
+                            // Respawn mostly where density is high to look realistic
+                            // Simple rejection sampling
+                            let spawnX = (Math.random() - 0.5) * 20;
+                            let spawnIdx = Math.floor((spawnX + 10) / PHYS.dx);
+                            if(spawnIdx >= 0 && spawnIdx < PHYS.N) {
+                                if (Math.random() < PHYS.rho[spawnIdx] * 2 + 0.05) {
+                                    positions[i*3] = spawnX;
+                                    positions[i*3+1] = (Math.random()) * 2 + 0.1; // random Y height
+                                }
+                            }
+                        }
+                    }
+                    particles.geometry.attributes.position.needsUpdate = true;
+                }
+
+                // 3. Update Charts (throttle)
+                if (frameCount % 3 === 0) {
+                    chartRhoJ.data.datasets[0].data = PHYS.rho;
+                    chartRhoJ.data.datasets[1].data = PHYS.J;
+                    chartRhoJ.update('none');
+
+                    chartCont.data.datasets[0].data = PHYS.drho_dt;
+                    
+                    // Display -divJ to show overlap with drho/dt
+                    const negDivJ = PHYS.divJ.map(v => -v);
+                    chartCont.data.datasets[1].data = negDivJ;
+                    chartCont.update('none');
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+            
+            frameCount++;
+            requestAnimationFrame(updateAndRender);
+        }
+
+        // Start
+        updateAndRender(0);
+
+    </script>
+</body>
+</html>

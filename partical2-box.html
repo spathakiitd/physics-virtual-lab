@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Particle Quantum Box Simulation</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .canvas-container { position: relative; border-radius: 0.5rem; overflow: hidden; background: #000; border: 1px solid #334155; }
+        canvas { display: block; width: 100%; height: 100%; }
+        input[type="range"] { accent-color: #3b82f6; }
+        .math { font-family: 'Times New Roman', Times, serif; font-style: italic; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(8px); border: 1px solid #334155; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-sm">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center p-4 bg-slate-900 border-b border-slate-800 shrink-0">
+        <div>
+            <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                Two-Particle Infinite Potential Well
+            </h1>
+            <p class="text-slate-400 text-xs mt-1">Interactive visualization of Quantum Statistics, Entanglement, and Superposition</p>
+        </div>
+        <div class="flex gap-4 text-xs bg-slate-800 p-2 rounded border border-slate-700">
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-500"></div> Negative Amplitude</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-red-500"></div> Positive Amplitude</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Left Sidebar: Controls -->
+        <aside class="w-full md:w-80 p-4 overflow-y-auto bg-slate-900 border-r border-slate-800 shrink-0 flex flex-col gap-6">
+            
+            <!-- Particle Statistics -->
+            <div class="glass-panel p-4 rounded-lg">
+                <h2 class="font-semibold text-white mb-3 text-base">Particle Statistics</h2>
+                <select id="particleType" class="w-full bg-slate-800 border border-slate-600 text-white rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    <option value="distinguishable">Distinguishable Particles</option>
+                    <option value="bosons">Identical Bosons (Symmetric)</option>
+                    <option value="fermions">Identical Fermions (Antisymmetric)</option>
+                    <option value="classical">Classical Identical (No Interference)</option>
+                </select>
+                <div id="statDesc" class="mt-3 text-xs text-slate-400 leading-relaxed">
+                    Particles are distinguishable. Total wavefunction is a simple product state.
+                </div>
+            </div>
+
+            <!-- Parameters -->
+            <div class="glass-panel p-4 rounded-lg flex flex-col gap-4">
+                <h2 class="font-semibold text-white text-base">State Parameters</h2>
+                
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label>State <span class="math">n₁</span> (Particle 1)</label>
+                        <span id="n1-val" class="font-mono text-blue-400 font-bold">1</span>
+                    </div>
+                    <input type="range" id="n1" min="1" max="6" value="1" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label>State <span class="math">n₂</span> (Particle 2)</label>
+                        <span id="n2-val" class="font-mono text-emerald-400 font-bold">2</span>
+                    </div>
+                    <input type="range" id="n2" min="1" max="6" value="2" class="w-full">
+                </div>
+                
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label>Box Length <span class="math">L</span></label>
+                        <span id="L-val" class="font-mono text-slate-300">1.0</span>
+                    </div>
+                    <input type="range" id="L-slider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label>Mass <span class="math">m</span></label>
+                        <span id="m-val" class="font-mono text-slate-300">1.0</span>
+                    </div>
+                    <input type="range" id="m-slider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full">
+                </div>
+            </div>
+
+            <!-- Visualization Controls -->
+            <div class="glass-panel p-4 rounded-lg flex flex-col gap-3">
+                <h2 class="font-semibold text-white text-base">Visualization Mode</h2>
+                
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="viewMode" value="prob" checked class="w-4 h-4 accent-blue-500">
+                    <span>Probability Density <span class="math">|&Psi;|²</span></span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer" id="label-real">
+                    <input type="radio" name="viewMode" value="real" class="w-4 h-4 accent-blue-500">
+                    <span>Real Part <span class="math">Re(&Psi;)</span></span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer" id="label-imag">
+                    <input type="radio" name="viewMode" value="imag" class="w-4 h-4 accent-blue-500">
+                    <span>Imaginary Part <span class="math">Im(&Psi;)</span></span>
+                </label>
+
+                <hr class="border-slate-700 my-2">
+
+                <div class="flex items-center justify-between">
+                    <span>Time Evolution</span>
+                    <button id="playPauseBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded transition">Pause</button>
+                </div>
+
+                <label class="flex items-center justify-between cursor-pointer mt-1" id="superposition-container">
+                    <span class="text-pink-400 font-medium">Mixed State Superposition</span>
+                    <input type="checkbox" id="superposition" class="w-4 h-4 accent-pink-500">
+                </label>
+                <p class="text-[10px] text-slate-500 leading-tight" id="superposition-desc">
+                    Mixes states <span class="math">(n₁, n₂)</span> and <span class="math">(n₁+1, n₂+1)</span>. Watch the probability density evolve!
+                </p>
+            </div>
+
+        </aside>
+
+        <!-- Center: 2D Heatmap -->
+        <section class="flex-1 p-4 flex flex-col items-center justify-center relative bg-slate-950">
+            <h2 class="text-lg font-semibold text-slate-300 mb-2">Joint Probability / Wavefunction 2D Map</h2>
+            <div class="relative canvas-container max-w-[600px] max-h-[600px] aspect-square w-full shadow-2xl shadow-blue-900/20">
+                <canvas id="heatmapCanvas"></canvas>
+                
+                <!-- Axis Labels -->
+                <div class="absolute bottom-2 right-4 text-slate-400 font-math">x₁ &rarr;</div>
+                <div class="absolute top-4 left-2 text-slate-400 font-math" style="writing-mode: vertical-rl; transform: rotate(180deg);">&uarr; x₂</div>
+                
+                <!-- Crosshair overlay for 1D slices -->
+                <div id="crossX" class="absolute bg-white/30 w-full h-[1px] pointer-events-none hidden"></div>
+                <div id="crossY" class="absolute bg-white/30 w-[1px] h-full pointer-events-none hidden"></div>
+            </div>
+            <p class="mt-4 text-xs text-slate-400">Hover over the heatmap to view 1D marginal slices on the right.</p>
+        </section>
+
+        <!-- Right Sidebar: 1D Slices & Math -->
+        <aside class="w-full md:w-80 p-4 overflow-y-auto bg-slate-900 border-l border-slate-800 shrink-0 flex flex-col gap-6">
+            
+            <!-- Live Math/Equations -->
+            <div class="glass-panel p-4 rounded-lg border border-slate-700">
+                <h3 class="font-semibold text-slate-200 mb-3 border-b border-slate-700 pb-2">System Mathematics</h3>
+                
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <span class="text-slate-400">Energy <span class="math">E₁</span>:</span> 
+                        <span id="e1-val" class="float-right font-mono text-blue-400"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400">Energy <span class="math">E₂</span>:</span> 
+                        <span id="e2-val" class="float-right font-mono text-emerald-400"></span>
+                    </div>
+                    <div class="border-t border-slate-700 pt-1 mt-1">
+                        <span class="text-slate-300 font-bold">Total Energy <span class="math">E</span>:</span> 
+                        <span id="etot-val" class="float-right font-mono text-pink-400 font-bold"></span>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-2 bg-slate-950 rounded border border-slate-800 text-[11px] font-mono text-slate-300 overflow-x-auto whitespace-nowrap" id="equation-display">
+                    <!-- Dynamic equation filled via JS -->
+                </div>
+            </div>
+
+            <!-- 1D Slices -->
+            <div class="glass-panel p-3 rounded-lg flex-1 flex flex-col gap-4">
+                <h3 class="font-semibold text-slate-200 text-sm">1D Slices <span class="text-[10px] text-slate-400 font-normal">(Interactive)</span></h3>
+                
+                <div class="flex-1 min-h-[120px] flex flex-col">
+                    <span class="text-xs text-slate-400 mb-1">Fixed <span class="math text-emerald-400">x₂</span>, viewing <span class="math">P(x₁)</span></span>
+                    <div class="canvas-container flex-1 bg-slate-950">
+                        <canvas id="sliceX1Canvas"></canvas>
+                    </div>
+                </div>
+
+                <div class="flex-1 min-h-[120px] flex flex-col">
+                    <span class="text-xs text-slate-400 mb-1">Fixed <span class="math text-blue-400">x₁</span>, viewing <span class="math">P(x₂)</span></span>
+                    <div class="canvas-container flex-1 bg-slate-950">
+                        <canvas id="sliceX2Canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- Simulation Script -->
+    <script>
+        // --- State Management ---
+        const state = {
+            n1: 1,
+            n2: 2,
+            L: 1.0,
+            m: 1.0,
+            type: 'distinguishable', // distinguishable, bosons, fermions, classical
+            viewMode: 'prob', // prob, real, imag
+            timeEvolution: true,
+            superposition: false,
+            time: 0,
+            mouseX: 0.5, // Normalized coordinates for slices (0 to 1)
+            mouseY: 0.5
+        };
+
+        // --- DOM Elements ---
+        const els = {
+            n1: document.getElementById('n1'),
+            n2: document.getElementById('n2'),
+            n1Val: document.getElementById('n1-val'),
+            n2Val: document.getElementById('n2-val'),
+            L: document.getElementById('L-slider'),
+            LVal: document.getElementById('L-val'),
+            m: document.getElementById('m-slider'),
+            mVal: document.getElementById('m-val'),
+            type: document.getElementById('particleType'),
+            statDesc: document.getElementById('statDesc'),
+            viewModes: document.getElementsByName('viewMode'),
+            labelReal: document.getElementById('label-real'),
+            labelImag: document.getElementById('label-imag'),
+            playPauseBtn: document.getElementById('playPauseBtn'),
+            superposition: document.getElementById('superposition'),
+            supContainer: document.getElementById('superposition-container'),
+            supDesc: document.getElementById('superposition-desc'),
+            
+            // Math Display
+            e1Val: document.getElementById('e1-val'),
+            e2Val: document.getElementById('e2-val'),
+            etotVal: document.getElementById('etot-val'),
+            eqDisplay: document.getElementById('equation-display'),
+            
+            // Canvases
+            heatmap: document.getElementById('heatmapCanvas'),
+            sliceX1: document.getElementById('sliceX1Canvas'),
+            sliceX2: document.getElementById('sliceX2Canvas'),
+            
+            // Crosshairs
+            crossX: document.getElementById('crossX'),
+            crossY: document.getElementById('crossY')
+        };
+
+        // Canvas Contexts
+        const ctxHeatmap = els.heatmap.getContext('2d', { alpha: false });
+        const ctxSliceX1 = els.sliceX1.getContext('2d');
+        const ctxSliceX2 = els.sliceX2.getContext('2d');
+
+        // Grid resolution for 2D plot (balance quality & 60fps)
+        const GRID_SIZE = 150; 
+        els.heatmap.width = GRID_SIZE;
+        els.heatmap.height = GRID_SIZE;
+        const imgData = ctxHeatmap.createImageData(GRID_SIZE, GRID_SIZE);
+
+        // --- Physics Engine ---
+
+        // Constants (hbar=1, scale factor for visual appeal)
+        const PI = Math.PI;
+        const SCALE_HBAR = 1;
+
+        // Energy calculation E_n = n^2 * PI^2 / (2 * m * L^2)
+        function getEnergy(n, L, m) {
+            return (n * n * PI * PI) / (2 * m * L * L);
+        }
+
+        // Single particle wavefunction psi_n(x)
+        function psi(n, x, L) {
+            if (x < 0 || x > L) return 0;
+            return Math.sqrt(2 / L) * Math.sin((n * PI * x) / L);
+        }
+
+        // Two-particle wavefunction amplitude (Spatial part)
+        function getSpatialAmplitude(x1, x2, n1, n2, L, type) {
+            const psi1_x1 = psi(n1, x1, L);
+            const psi2_x2 = psi(n2, x2, L);
+            const psi2_x1 = psi(n2, x1, L);
+            const psi1_x2 = psi(n1, x2, L);
+
+            if (type === 'distinguishable') {
+                return psi1_x1 * psi2_x2;
+            } 
+            else if (type === 'bosons') {
+                const norm = (n1 === n2) ? 1.0 : Math.SQRT1_2; // 1/sqrt(2)
+                return norm * (psi1_x1 * psi2_x2 + psi2_x1 * psi1_x2);
+            } 
+            else if (type === 'fermions') {
+                if (n1 === n2) return 0; // Pauli Exclusion
+                return Math.SQRT1_2 * (psi1_x1 * psi2_x2 - psi2_x1 * psi1_x2);
+            }
+            return 0;
+        }
+
+        // Full Complex Wavefunction evaluation including time evolution and superposition
+        function evaluateState(x1, x2) {
+            const L = state.L;
+            const m = state.m;
+            const type = state.type;
+            const t = state.time;
+
+            // Handle Classical Particles separately (no amplitudes, only probabilities add)
+            if (type === 'classical') {
+                const p1_x1 = Math.pow(psi(state.n1, x1, L), 2);
+                const p2_x2 = Math.pow(psi(state.n2, x2, L), 2);
+                const p2_x1 = Math.pow(psi(state.n2, x1, L), 2);
+                const p1_x2 = Math.pow(psi(state.n1, x2, L), 2);
+                
+                // Classical identical particles: average of the two possible classical configurations
+                let prob = 0.5 * (p1_x1 * p2_x2 + p2_x1 * p1_x2);
+                
+                if (state.superposition) {
+                    // Classical "superposition" is just a mixture of probability distributions
+                    const n1_sup = state.n1 + 1;
+                    const n2_sup = state.n2 + 1;
+                    const p1_x1_s = Math.pow(psi(n1_sup, x1, L), 2);
+                    const p2_x2_s = Math.pow(psi(n2_sup, x2, L), 2);
+                    const p2_x1_s = Math.pow(psi(n2_sup, x1, L), 2);
+                    const p1_x2_s = Math.pow(psi(n1_sup, x2, L), 2);
+                    
+                    const prob_s = 0.5 * (p1_x1_s * p2_x2_s + p2_x1_s * p1_x2_s);
+                    prob = 0.5 * prob + 0.5 * prob_s; // 50/50 mix
+                }
+
+                return { real: Math.sqrt(prob), imag: 0, prob: prob };
+            }
+
+            // Quantum Mechanics (Amplitudes add)
+            const amp1 = getSpatialAmplitude(x1, x2, state.n1, state.n2, L, type);
+            const E1 = getEnergy(state.n1, L, m) + getEnergy(state.n2, L, m);
+            const phase1 = -E1 * t / SCALE_HBAR;
+
+            let real = amp1 * Math.cos(phase1);
+            let imag = amp1 * Math.sin(phase1);
+
+            // Superposition State (n1+1, n2+1)
+            if (state.superposition) {
+                // Mix with 1/sqrt(2) coefficient for each
+                const n1_sup = state.n1 + 1;
+                const n2_sup = state.n2 + 1;
+                const amp2 = getSpatialAmplitude(x1, x2, n1_sup, n2_sup, L, type);
+                const E2 = getEnergy(n1_sup, L, m) + getEnergy(n2_sup, L, m);
+                const phase2 = -E2 * t / SCALE_HBAR;
+
+                real = Math.SQRT1_2 * real + Math.SQRT1_2 * amp2 * Math.cos(phase2);
+                imag = Math.SQRT1_2 * imag + Math.SQRT1_2 * amp2 * Math.sin(phase2);
+            }
+
+            return { real, imag, prob: real*real + imag*imag };
+        }
+
+
+        // --- Colormaps ---
+
+        // Probability Density (Magma-like: Black -> Purple -> Orange -> White)
+        function colorProb(val, maxVal) {
+            let t = Math.max(0, Math.min(1, val / maxVal));
+            // Power curve to enhance contrast
+            t = Math.pow(t, 0.7); 
+            const r = Math.min(255, t * 255 * 2.5);
+            const g = Math.min(255, t > 0.4 ? (t - 0.4) * 255 * 2.5 : 0);
+            const b = Math.min(255, t > 0.8 ? (t - 0.8) * 255 * 5 : (t < 0.3 ? t * 255 * 2 : 0));
+            return [r, g, b, 255];
+        }
+
+        // Wavefunction Real/Imag (Diverging: Blue <- Black -> Red)
+        function colorWave(val, maxVal) {
+            let t = val / maxVal;
+            t = Math.max(-1, Math.min(1, t));
+            
+            if (t > 0) {
+                // Positive: Black to Red to Yellowish
+                return [t*255, t*100, t*50, 255];
+            } else {
+                // Negative: Black to Blue to Cyan
+                t = -t;
+                return [t*50, t*150, t*255, 255];
+            }
+        }
+
+
+        // --- Rendering ---
+
+        function updateMathDisplay() {
+            const E1 = getEnergy(state.n1, state.L, state.m);
+            const E2 = getEnergy(state.n2, state.L, state.m);
+            const Etot = E1 + E2;
+
+            els.e1Val.innerText = `${E1.toFixed(2)} a.u.`;
+            els.e2Val.innerText = `${E2.toFixed(2)} a.u.`;
+            els.etotVal.innerText = `${Etot.toFixed(2)} a.u.`;
+
+            // Display Equation format
+            let eqHTML = ``;
+            
+            if (state.type === 'classical') {
+                eqHTML += `P(x&boxH;, x&boxV;) = 1/2 [ |&psi;<sub>${state.n1}</sub>(x&boxH;)|&sup2;|&psi;<sub>${state.n2}</sub>(x&boxV;)|&sup2; + |&psi;<sub>${state.n2}</sub>(x&boxH;)|&sup2;|&psi;<sub>${state.n1}</sub>(x&boxV;)|&sup2; ]`;
+                els.statDesc.innerText = "Classical Identical: Probabilities add, not amplitudes. No quantum interference (no fermion nodes, no boson bunching).";
+            } else {
+                eqHTML += `&Psi;(x&boxH;, x&boxV;) = `;
+                if (state.superposition) {
+                    eqHTML += `(1/&radic;2)[ &Psi;<sub>${state.n1},${state.n2}</sub> + &Psi;<sub>${state.n1+1},${state.n2+1}</sub> ]<br>`;
+                    eqHTML += `&Psi;<sub>i,j</sub> = `;
+                }
+
+                if (state.type === 'distinguishable') {
+                    eqHTML += `&psi;<sub>${state.n1}</sub>(x&boxH;) &middot; &psi;<sub>${state.n2}</sub>(x&boxV;)`;
+                    els.statDesc.innerText = "Distinguishable: Product state, no exchange symmetry required.";
+                } else if (state.type === 'bosons') {
+                    const pre = state.n1 === state.n2 ? `1` : `1/&radic;2`;
+                    eqHTML += `${pre} [ &psi;<sub>${state.n1}</sub>(x&boxH;)&psi;<sub>${state.n2}</sub>(x&boxV;) + &psi;<sub>${state.n2}</sub>(x&boxH;)&psi;<sub>${state.n1}</sub>(x&boxV;) ]`;
+                    els.statDesc.innerText = "Bosons: Symmetric wavefunction. Particles tend to bunch together (enhanced probability along x1=x2).";
+                } else if (state.type === 'fermions') {
+                    eqHTML += `1/&radic;2 [ &psi;<sub>${state.n1}</sub>(x&boxH;)&psi;<sub>${state.n2}</sub>(x&boxV;) - &psi;<sub>${state.n2}</sub>(x&boxH;)&psi;<sub>${state.n1}</sub>(x&boxV;) ]`;
+                    els.statDesc.innerText = "Fermions: Antisymmetric. Pauli Exclusion applies. Zero probability along x1=x2 (node line).";
+                }
+            }
+            els.eqDisplay.innerHTML = eqHTML;
+        }
+
+        function drawHeatmap() {
+            // Determine maximum theoretical amplitude for stable color mapping
+            const maxAmp = (2 / state.L) * 1.414; 
+            const maxProb = maxAmp * maxAmp;
+
+            const data = imgData.data;
+            const L = state.L;
+
+            for (let py = 0; py < GRID_SIZE; py++) {
+                // y-axis goes up, so flip py
+                const x2 = L * (GRID_SIZE - 1 - py) / (GRID_SIZE - 1);
+                
+                for (let px = 0; px < GRID_SIZE; px++) {
+                    const x1 = L * px / (GRID_SIZE - 1);
+                    
+                    const res = evaluateState(x1, x2);
+                    let color;
+
+                    if (state.viewMode === 'prob') {
+                        color = colorProb(res.prob, maxProb);
+                    } else if (state.viewMode === 'real') {
+                        color = colorWave(res.real, maxAmp);
+                    } else {
+                        color = colorWave(res.imag, maxAmp);
+                    }
+
+                    const idx = (py * GRID_SIZE + px) * 4;
+                    data[idx] = color[0];
+                    data[idx + 1] = color[1];
+                    data[idx + 2] = color[2];
+                    data[idx + 3] = color[3];
+                }
+            }
+
+            ctxHeatmap.putImageData(imgData, 0, 0);
+
+            // Draw symmetry line x1 = x2 faintly
+            ctxHeatmap.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctxHeatmap.lineWidth = 1;
+            ctxHeatmap.setLineDash([5, 5]);
+            ctxHeatmap.beginPath();
+            ctxHeatmap.moveTo(0, GRID_SIZE);
+            ctxHeatmap.lineTo(GRID_SIZE, 0);
+            ctxHeatmap.stroke();
+            ctxHeatmap.setLineDash([]);
+        }
+
+        function drawSlices() {
+            const L = state.L;
+            const targetX1 = state.mouseX * L;
+            const targetX2 = state.mouseY * L;
+
+            // Draw Slice X1 (Fixed x2)
+            draw1DSlice(els.sliceX1, ctxSliceX1, (x) => evaluateState(x, targetX2).prob, '#3b82f6', targetX2);
+            
+            // Draw Slice X2 (Fixed x1)
+            draw1DSlice(els.sliceX2, ctxSliceX2, (x) => evaluateState(targetX1, x).prob, '#10b981', targetX1);
+        }
+
+        function draw1DSlice(canvas, ctx, probFunc, color, fixedVal) {
+            // Ensure canvas matches display size
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width;
+                canvas.height = height;
+            }
+
+            ctx.clearRect(0, 0, width, height);
+
+            const pts = 100;
+            const L = state.L;
+            // Max prob scaled based on theoretical max
+            const maxProb = ((2 / L) * 1.414) ** 2;
+
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            
+            for (let i = 0; i <= pts; i++) {
+                const x = (i / pts) * L;
+                const prob = probFunc(x);
+                const px = (i / pts) * width;
+                const py = height - (prob / maxProb) * height * 0.9; // 10% padding top
+                ctx.lineTo(px, py);
+            }
+            
+            // Fill
+            ctx.lineTo(width, height);
+            ctx.closePath();
+            
+            const grad = ctx.createLinearGradient(0, 0, 0, height);
+            grad.addColorStop(0, color);
+            grad.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad;
+            ctx.globalAlpha = 0.3;
+            ctx.fill();
+            
+            // Stroke
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Label
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '10px sans-serif';
+            ctx.fillText(`Slice at ${fixedVal.toFixed(2)}`, 5, 15);
+        }
+
+
+        // --- Event Listeners ---
+
+        function validateRules() {
+            // 1. Pauli Exclusion
+            if (state.type === 'fermions' && state.n1 === state.n2) {
+                state.n2 = state.n1 === 6 ? state.n1 - 1 : state.n1 + 1;
+                els.n2.value = state.n2;
+                els.n2Val.innerText = state.n2;
+                
+                // Visual feedback
+                els.n2Val.classList.add('text-red-500');
+                setTimeout(() => els.n2Val.classList.remove('text-red-500'), 500);
+            }
+
+            // 2. Classical mode restrictions (no phase/imaginary components)
+            if (state.type === 'classical') {
+                els.labelReal.style.opacity = '0.3';
+                els.labelImag.style.opacity = '0.3';
+                if (state.viewMode !== 'prob') {
+                    state.viewMode = 'prob';
+                    els.viewModes[0].checked = true; // force back to prob
+                }
+            } else {
+                els.labelReal.style.opacity = '1';
+                els.labelImag.style.opacity = '1';
+            }
+        }
+
+        function updateState() {
+            state.n1 = parseInt(els.n1.value);
+            state.n2 = parseInt(els.n2.value);
+            state.L = parseFloat(els.L.value);
+            state.m = parseFloat(els.m.value);
+            state.type = els.type.value;
+            state.superposition = els.superposition.checked;
+
+            Array.from(els.viewModes).forEach(radio => {
+                if(radio.checked) state.viewMode = radio.value;
+            });
+
+            els.n1Val.innerText = state.n1;
+            els.n2Val.innerText = state.n2;
+            els.LVal.innerText = state.L.toFixed(1);
+            els.mVal.innerText = state.m.toFixed(1);
+
+            validateRules();
+            updateMathDisplay();
+            
+            // If paused, force a redraw
+            if (!state.timeEvolution) {
+                drawHeatmap();
+                drawSlices();
+            }
+        }
+
+        // Attach events
+        [els.n1, els.n2, els.L, els.m, els.type, els.superposition, ...els.viewModes].forEach(el => {
+            el.addEventListener('input', updateState);
+            el.addEventListener('change', updateState);
+        });
+
+        els.playPauseBtn.addEventListener('click', () => {
+            state.timeEvolution = !state.timeEvolution;
+            els.playPauseBtn.innerText = state.timeEvolution ? "Pause" : "Play";
+            els.playPauseBtn.className = state.timeEvolution 
+                ? "bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded transition"
+                : "bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded transition";
+        });
+
+        // Heatmap Mouse Interaction
+        els.heatmap.parentElement.addEventListener('mousemove', (e) => {
+            const rect = els.heatmap.getBoundingClientRect();
+            // Constrain mouse to canvas bounds
+            const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+            const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+            
+            state.mouseX = x / rect.width;
+            state.mouseY = 1.0 - (y / rect.height); // Flip Y since y=0 is bottom in physics
+
+            // Update UI crosshairs
+            els.crossX.style.display = 'block';
+            els.crossY.style.display = 'block';
+            els.crossX.style.top = `${(1 - state.mouseY) * 100}%`;
+            els.crossY.style.left = `${state.mouseX * 100}%`;
+
+            if (!state.timeEvolution) drawSlices(); // Draw immediately if paused
+        });
+
+        els.heatmap.parentElement.addEventListener('mouseleave', () => {
+            els.crossX.style.display = 'none';
+            els.crossY.style.display = 'none';
+        });
+
+        // --- Main Loop ---
+        let lastTime = performance.now();
+        function loop(t) {
+            const dt = (t - lastTime) / 1000; // delta time in seconds
+            lastTime = t;
+
+            if (state.timeEvolution) {
+                // Time speed factor (arbitrary for visualization)
+                state.time += dt * 5.0; 
+                
+                drawHeatmap();
+                drawSlices();
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        // Init
+        updateState();
+        requestAnimationFrame(loop);
+
+    </script>
+</body>
+</html>
