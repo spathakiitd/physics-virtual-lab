@@ -19,9 +19,9 @@
                             800: '#115e59',
                             900: '#134e4a',
                             950: '#042f2e',
-                            bg: '#020617', // Very dark slate/blue for deep space feel
+                            bg: '#020617', 
                             panel: '#0f172a',
-                            accent: '#06b6d4' // Cyan for tech vibe
+                            accent: '#06b6d4' 
                         }
                     },
                     fontFamily: {
@@ -36,7 +36,7 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
-    <!-- Plotly.js for Scientific Graphing -->
+    <!-- Plotly.js for Native Scientific Graphing -->
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
     
     <!-- KaTeX for Math Equation Rendering -->
@@ -48,7 +48,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        /* Custom Scrollbar for scientific look */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -60,7 +59,6 @@
             overflow-x: hidden;
         }
 
-        /* Hero Animation Background */
         #hero-canvas {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -68,7 +66,6 @@
             opacity: 0.3;
         }
 
-        /* Range Slider Styling */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
@@ -97,7 +94,6 @@
             border: 1px solid rgba(51, 65, 85, 0.5);
         }
 
-        /* Latex rendering specific adjustments */
         .katex-display {
             overflow-x: auto;
             overflow-y: hidden;
@@ -105,11 +101,10 @@
             margin: 0;
         }
         
-        /* Canvas container aspect ratio control */
         .canvas-container {
             position: relative;
             width: 100%;
-            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            padding-bottom: 56.25%;
             background: #000;
             border-radius: 0.5rem;
             overflow: hidden;
@@ -119,16 +114,23 @@
             top: 0; left: 0; width: 100%; height: 100%;
         }
 
-        /* Tab active state */
         .tab-active {
             border-bottom: 2px solid #06b6d4;
             color: #06b6d4;
+        }
+
+        /* Iframe styling for external modules */
+        .external-sim-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: white; /* Fallback for HTMLs without dark mode */
+            border-radius: 0.5rem;
         }
     </style>
 </head>
 <body class="flex flex-col min-h-screen text-slate-300 antialiased selection:bg-sci-accent selection:text-black">
 
-    <!-- Navigation -->
     <nav class="sticky top-0 z-50 glass-panel border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
@@ -155,15 +157,6 @@
                     </div>
                 </div>
                 <div class="flex items-center">
-                    <div class="relative mr-4 hidden sm:block">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i data-lucide="search" class="h-4 w-4 text-slate-500"></i>
-                        </div>
-                        <input type="text" class="block w-full pl-10 pr-3 py-1.5 border border-slate-700 rounded-md leading-5 bg-slate-900 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sci-accent focus:border-sci-accent sm:text-sm" placeholder="Search physics...">
-                    </div>
-                    <button class="p-2 rounded-full hover:bg-slate-800 transition-colors hidden md:block">
-                        <i data-lucide="sun" class="w-5 h-5"></i>
-                    </button>
                     <!-- Mobile menu button -->
                     <div class="-mr-2 flex md:hidden">
                         <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 focus:outline-none">
@@ -192,252 +185,188 @@
         </div>
     </footer>
 
-    <!-- JavaScript Application Logic -->
     <script>
-        // --- 1. CORE UTILITIES & PHYSICS CONSTANTS ---
         const Constants = {
-            h: 6.62607015e-34,    // Planck constant (J*s)
-            hbar: 1.054571817e-34, // Reduced Planck constant
-            c: 299792458,         // Speed of light (m/s)
-            e: 1.602176634e-19,   // Elementary charge (C)
-            e0: 8.8541878128e-12, // Vacuum permittivity (F/m)
-            m0: 1.25663706212e-6, // Vacuum permeability (N/A^2)
-            kB: 1.380649e-23,     // Boltzmann constant (J/K)
-            me: 9.1093837015e-31, // Electron mass (kg)
-            mp: 1.67262192369e-27 // Proton mass (kg)
+            h: 6.62607015e-34,    
+            hbar: 1.054571817e-34, 
+            c: 299792458,         
+            e: 1.602176634e-19,   
+            e0: 8.8541878128e-12, 
+            m0: 1.25663706212e-6, 
+            kB: 1.380649e-23,     
+            me: 9.1093837015e-31, 
+            mp: 1.67262192369e-27 
         };
 
         const MathUtils = {
-            // Map a value from one range to another
             map: (val, in_min, in_max, out_min, out_max) => (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min,
-            // Evaluate polynomial
-            poly: (x, coeffs) => coeffs.reduce((acc, c, i) => acc + c * Math.pow(x, i), 0),
-            // Fast distance
             dist2: (x1, y1, x2, y2) => (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1),
             dist: (x1, y1, x2, y2) => Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
         };
 
-        // --- 2. SIMULATION REGISTRY ---
-        // This architecture allows infinite extensibility without modifying core logic.
         const Registry = {
-            'external-html-sim': {
-                id: 'external-html-sim',
-                subjectId: 'quantum',
-                category: 'Custom Extensions',
-                title: 'External HTML Simulator',
-                difficulty: 'Intermediate',
-                description: 'Demonstration of loading a separate, standalone HTML file as a simulation within the Virtual Lab architecture.',
-                objectives: [
-                    "Embed external HTML files seamlessly.",
-                    "Demonstrate extensibility via iframe engine."
-                ],
-                params: [
-                    { id: 'note', name: 'Note', type: 'select', options: [{val: 1, label: 'Controls are inside the HTML file'}], default: 1 }
-                ],
-                equations: `
-                    **External File Loading**
-                    This module loads a separate file (\`external-sim.html\`) inside an iframe sandbox.
-                `,
-                engine: 'iframe',
-                // Replace this URL with the path to your external HTML file when hosting on GitHub
-                url: 'https://phet.colorado.edu/sims/html/states-of-matter/latest/states-of-matter_all.html', 
-                ClassRef: 'IframeSim'
+            // --- USER-PROVIDED EXTERNAL SIMULATIONS ---
+            'blackbody-radiation': {
+                id: 'blackbody-radiation', subjectId: 'thermo', category: 'Thermodynamics & Modern Physics',
+                title: 'Blackbody Radiation', difficulty: 'Intermediate',
+                description: 'Explore Planck\'s law and the spectral radiance of a blackbody at thermal equilibrium.',
+                objectives: ["Understand the relationship between temperature and peak wavelength (Wien's Law).", "Observe the resolution of the ultraviolet catastrophe."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ B(\\lambda, T) = \\frac{2hc^2}{\\lambda^5} \\frac{1}{e^{\\frac{hc}{\\lambda k_B T}} - 1} $$`,
+                engine: 'iframe', url: './Blackbody-radiation.html', ClassRef: 'IframeSim'
             },
-            'quantum-tunneling': {
-                id: 'quantum-tunneling',
-                subjectId: 'quantum',
-                category: 'Quantum Mechanics',
-                title: 'Quantum Tunneling',
-                difficulty: 'Advanced',
-                description: 'Visualize a wave packet or continuous state tunneling through a potential barrier. Adjust barrier height and width to observe transmission and reflection.',
-                objectives: [
-                    "Observe non-classical penetration of barriers.",
-                    "Understand reflection and transmission coefficients.",
-                    "Analyze exponential decay of wavefunction inside barrier."
-                ],
-                params: [
-                    { id: 'energy', name: 'Particle Energy (E)', type: 'slider', min: 0.1, max: 2.0, step: 0.1, default: 1.0, unit: 'eV' },
-                    { id: 'v0', name: 'Barrier Height (V₀)', type: 'slider', min: 0.5, max: 3.0, step: 0.1, default: 1.5, unit: 'eV' },
-                    { id: 'width', name: 'Barrier Width (a)', type: 'slider', min: 0.1, max: 2.0, step: 0.1, default: 0.5, unit: 'nm' }
-                ],
-                equations: `
-                    **Transmission Coefficient (E < V₀):**
-                    $$ T \\approx e^{-2ka} $$
-                    $$ k = \\frac{\\sqrt{2m(V_0 - E)}}{\\hbar} $$
-                `,
-                engine: 'plotly',
-                ClassRef: 'QuantumTunnelingSim'
+            'compton-effect': {
+                id: 'compton-effect', subjectId: 'quantum', category: 'Quantum Mechanics',
+                title: 'Compton Effect', difficulty: 'Advanced',
+                description: 'Visualize the inelastic scattering of a photon by a charged particle, demonstrating the particle nature of electromagnetic radiation.',
+                objectives: ["Analyze photon momentum.", "Calculate wavelength shift as a function of scattering angle."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ \\Delta \\lambda = \\frac{h}{m_e c} (1 - \\cos \\theta) $$`,
+                engine: 'iframe', url: './Compton-effect.html', ClassRef: 'IframeSim'
             },
-            'infinite-well': {
-                id: 'infinite-well',
-                subjectId: 'quantum',
-                category: 'Quantum Mechanics',
-                title: 'Infinite Potential Well',
-                difficulty: 'Beginner',
-                description: 'Visualize the quantized energy levels, wave functions, and probability densities of a particle trapped in a 1D rigid box.',
-                objectives: [
-                    "Explain energy quantization.",
-                    "Interpret probability density |ψ|².",
-                    "Analyze effect of well width on energy."
-                ],
-                params: [
-                    { id: 'n', name: 'Quantum State (n)', type: 'slider', min: 1, max: 10, step: 1, default: 1, unit: '' },
-                    { id: 'L', name: 'Well Width (L)', type: 'slider', min: 0.1, max: 5.0, step: 0.1, default: 1.0, unit: 'nm' },
-                    { id: 'mass', name: 'Particle Mass', type: 'select', options: [{val: 1, label: 'Electron'}, {val: 206, label: 'Muon'}], default: 1 }
-                ],
-                equations: `
-                    **Schrödinger Equation:**
-                    $$ -\\frac{\\hbar^2}{2m} \\frac{d^2\\psi}{dx^2} = E\\psi $$
-                    **Energy Levels:**
-                    $$ E_n = \\frac{n^2 \\pi^2 \\hbar^2}{2mL^2} $$
-                    **Wave Function:**
-                    $$ \\psi_n(x) = \\sqrt{\\frac{2}{L}} \\sin\\left(\\frac{n\\pi x}{L}\\right) $$
-                `,
-                engine: 'plotly', 
-                ClassRef: 'InfiniteWellSim' 
+            'group-phase-velocity': {
+                id: 'group-phase-velocity', subjectId: 'quantum', category: 'Wave Mechanics',
+                title: 'Group and Phase Velocity', difficulty: 'Intermediate',
+                description: 'Differentiate between the phase velocity of individual wave components and the group velocity of the wave packet.',
+                objectives: ["Distinguish between phase and group velocities.", "Understand wave dispersion."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ v_p = \\frac{\\omega}{k}, \\quad v_g = \\frac{d\\omega}{dk} $$`,
+                engine: 'iframe', url: './Groupphase-velocity.html', ClassRef: 'IframeSim'
             },
+            'wave-particle-duality': {
+                id: 'wave-particle-duality', subjectId: 'quantum', category: 'Quantum Mechanics',
+                title: 'Wave-Particle Duality', difficulty: 'Beginner',
+                description: 'Interactive demonstration of the De Broglie hypothesis, showing how matter exhibits both wave-like and particle-like properties.',
+                objectives: ["Relate momentum to wavelength.", "Understand the foundational principle of quantum mechanics."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ \\lambda = \\frac{h}{p} $$\\<br>$$ E = h\\nu $$`,
+                engine: 'iframe', url: './8_Waveparticle-duality.html', ClassRef: 'IframeSim'
+            },
+            'heisenberg-uncertainty': {
+                id: 'heisenberg-uncertainty', subjectId: 'quantum', category: 'Quantum Mechanics',
+                title: 'Heisenberg Uncertainty Principle', difficulty: 'Intermediate',
+                description: 'Simulate the fundamental limit to the precision with which complementary variables (position and momentum) can be known.',
+                objectives: ["Observe the inverse relationship between spatial confinement and momentum spread."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ \\Delta x \\Delta p \\ge \\frac{\\hbar}{2} $$`,
+                engine: 'iframe', url: './9_Heisenberg Uncertainty Simulator.html', ClassRef: 'IframeSim'
+            },
+            'particle-2d-box': {
+                id: 'particle-2d-box', subjectId: 'quantum', category: 'Quantum Mechanics',
+                title: 'Particle in a 2D Box', difficulty: 'Advanced',
+                description: 'Explore wavefunctions and energy states for a quantum particle confined in a two-dimensional rectangular potential well.',
+                objectives: ["Visualize 2D nodal patterns.", "Calculate degenerate energy levels."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ E_{n_x, n_y} = \\frac{\\pi^2 \\hbar^2}{2m} \\left( \\frac{n_x^2}{L_x^2} + \\frac{n_y^2}{L_y^2} \\right) $$`,
+                engine: 'iframe', url: './partical2-box.html', ClassRef: 'IframeSim'
+            },
+            'probability-current': {
+                id: 'probability-current', subjectId: 'quantum', category: 'Quantum Mechanics',
+                title: 'Probability Current Density', difficulty: 'Advanced',
+                description: 'Analyze the flow of probability in quantum systems, analogous to electrical current density.',
+                objectives: ["Understand conservation of probability.", "Calculate current for scattering states."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ \\vec{j} = \\frac{\\hbar}{2mi} (\\psi^* \\nabla \\psi - \\psi \\nabla \\psi^*) $$`,
+                engine: 'iframe', url: './Prob-current-density.html', ClassRef: 'IframeSim'
+            },
+            'single-particle-box': {
+                id: 'single-particle-box', subjectId: 'quantum', category: 'Quantum Mechanics',
+                title: 'Single Particle in a 1D Box', difficulty: 'Beginner',
+                description: 'Fundamental demonstration of quantized energy levels for a particle in an infinitely deep potential well.',
+                objectives: ["Identify quantization of energy.", "Observe nodes in the wavefunction."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ E_n = \\frac{n^2 \\pi^2 \\hbar^2}{2mL^2} $$`,
+                engine: 'iframe', url: './Single-particle-in-a-box.html', ClassRef: 'IframeSim'
+            },
+            'photoelectric-effect': {
+                id: 'photoelectric-effect', subjectId: 'quantum', category: 'Modern Physics',
+                title: 'Photoelectric Effect', difficulty: 'Intermediate',
+                description: 'Experiment with light intensity and frequency to observe the emission of photoelectrons from a metal surface.',
+                objectives: ["Determine work function of materials.", "Understand stopping potential."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ K_{max} = h\\nu - \\Phi $$`,
+                engine: 'iframe', url: './Photoelectriceffect1.html', ClassRef: 'IframeSim'
+            },
+            'quantum-harmonic-oscillator': {
+                id: 'quantum-harmonic-oscillator', subjectId: 'quantum', category: 'Quantum Mechanics',
+                title: 'Quantum Harmonic Oscillator', difficulty: 'Advanced',
+                description: 'Visualize the wavefunctions, probability densities, and zero-point energy of a quantum harmonic oscillator.',
+                objectives: ["Identify the presence of zero-point energy.", "Compare with classical oscillator probability bounds."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ E_n = \\hbar \\omega \\left(n + \\frac{1}{2}\\right) $$`,
+                engine: 'iframe', url: './Quantum Harmonic Oscillator1.html', ClassRef: 'IframeSim'
+            },
+            'quantum-tunneling-v2': {
+                id: 'quantum-tunneling-v2', subjectId: 'quantum', category: 'Quantum Mechanics',
+                title: 'Quantum Tunneling V2', difficulty: 'Advanced',
+                description: 'Advanced interactive simulation of a wave packet tunneling through a finite potential barrier.',
+                objectives: ["Calculate transmission and reflection coefficients.", "Observe exponential decay inside the barrier."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ T \\approx e^{-2ka}, \\quad k = \\frac{\\sqrt{2m(V_0 - E)}}{\\hbar} $$`,
+                engine: 'iframe', url: './Quantum-tunnellingV2.html', ClassRef: 'IframeSim'
+            },
+
+            // --- NATIVE DEMONSTRATION SIMULATIONS ---
             'e-field': {
-                id: 'e-field',
-                subjectId: 'electromagnetism',
-                category: 'Electromagnetic Theory',
-                title: 'Electric Field Vectors',
-                difficulty: 'Intermediate',
+                id: 'e-field', subjectId: 'electromagnetism', category: 'Electromagnetic Theory',
+                title: 'Electric Field Vectors', difficulty: 'Intermediate',
                 description: 'Interactively place positive and negative point charges to observe the resulting static electric vector field.',
-                objectives: [
-                    "Understand superposition of E-fields.",
-                    "Visualize vector magnitude via color/length.",
-                    "Identify field line sources and sinks."
-                ],
+                objectives: ["Understand superposition of E-fields.", "Visualize vector magnitude via color/length."],
                 params: [
                     { id: 'gridRes', name: 'Grid Resolution', type: 'slider', min: 10, max: 40, step: 2, default: 24, unit: '' },
                     { id: 'chargeMag', name: 'New Charge (q)', type: 'slider', min: -5, max: 5, step: 1, default: 1, unit: 'nC' },
                 ],
-                equations: `
-                    **Coulomb's Law (Electric Field):**
-                    $$ \\vec{E} = \\sum_{i} \\frac{1}{4\\pi\\epsilon_0} \\frac{q_i}{r_i^2} \\hat{r}_i $$
-                    **Magnitude:**
-                    $$ |\\vec{E}| = \\sqrt{E_x^2 + E_y^2} $$
-                `,
+                equations: `$$ \\vec{E} = \\sum_{i} \\frac{1}{4\\pi\\epsilon_0} \\frac{q_i}{r_i^2} \\hat{r}_i $$`,
                 customControls: `
                     <div class="flex space-x-2 mt-4">
                         <button id="btnAddCharge" class="flex-1 bg-sci-accent text-slate-900 font-medium py-2 px-4 rounded hover:bg-cyan-400 transition">Add Charge</button>
                         <button id="btnClear" class="flex-1 bg-slate-700 text-white font-medium py-2 px-4 rounded hover:bg-slate-600 transition">Clear All</button>
                     </div>
-                    <p class="text-xs text-slate-400 mt-2">Click canvas after clicking 'Add Charge' to place it. Drag existing charges to move them.</p>
                 `,
-                engine: 'canvas',
-                ClassRef: 'ElectricFieldSim'
+                engine: 'canvas', ClassRef: 'ElectricFieldSim'
             },
             'harmonic-oscillator': {
-                id: 'harmonic-oscillator',
-                subjectId: 'mechanics',
-                category: 'Classical Mechanics',
-                title: 'Simple Harmonic Oscillator',
-                difficulty: 'Beginner',
+                id: 'harmonic-oscillator', subjectId: 'mechanics', category: 'Classical Mechanics',
+                title: 'Simple Harmonic Oscillator', difficulty: 'Beginner',
                 description: 'Analyze the kinematics and energetics of a mass-spring system, including phase space trajectories.',
-                objectives: [
-                    "Relate force, mass, and acceleration.",
-                    "Observe conservation of mechanical energy.",
-                    "Interpret phase space (x vs v) plots."
-                ],
+                objectives: ["Relate force, mass, and acceleration.", "Observe conservation of mechanical energy."],
                 params: [
                     { id: 'm', name: 'Mass (m)', type: 'slider', min: 0.1, max: 5.0, step: 0.1, default: 1.0, unit: 'kg' },
                     { id: 'k', name: 'Spring Constant (k)', type: 'slider', min: 1, max: 50, step: 1, default: 10, unit: 'N/m' },
                     { id: 'A', name: 'Initial Amplitude', type: 'slider', min: 0.1, max: 2.0, step: 0.1, default: 1.0, unit: 'm' }
                 ],
-                equations: `
-                    **Equation of Motion:**
-                    $$ m\\frac{d^2x}{dt^2} + kx = 0 $$
-                    **Angular Frequency:**
-                    $$ \\omega = \\sqrt{\\frac{k}{m}} $$
-                    **Position:**
-                    $$ x(t) = A \\cos(\\omega t) $$
-                `,
-                engine: 'hybrid', 
-                ClassRef: 'HarmonicOscillatorSim'
-            },
-            'maxwell-boltzmann': {
-                id: 'maxwell-boltzmann',
-                subjectId: 'thermo',
-                category: 'Thermodynamics',
-                title: 'Maxwell-Boltzmann Distribution',
-                difficulty: 'Intermediate',
-                description: 'Explore the statistical distribution of speeds for particles in an ideal gas at thermal equilibrium.',
-                objectives: [
-                    "Understand temperature as average kinetic energy.",
-                    "Identify most probable, mean, and rms speeds.",
-                    "Analyze mass dependency of speed distribution."
-                ],
-                params: [
-                    { id: 'T', name: 'Temperature (T)', type: 'slider', min: 100, max: 1000, step: 10, default: 300, unit: 'K' },
-                    { id: 'mass', name: 'Gas Type', type: 'select', options: [
-                        {val: 4.002, label: 'Helium (He)'}, 
-                        {val: 20.18, label: 'Neon (Ne)'},
-                        {val: 39.95, label: 'Argon (Ar)'}
-                    ], default: 4.002 }
-                ],
-                equations: `
-                    **Probability Density Function:**
-                    $$ f(v) = 4\\pi \\left(\\frac{m}{2\\pi k_B T}\\right)^{3/2} v^2 e^{-\\frac{mv^2}{2k_B T}} $$
-                    **Root Mean Square Speed:**
-                    $$ v_{rms} = \\sqrt{\\frac{3k_B T}{m}} $$
-                `,
-                engine: 'plotly',
-                ClassRef: 'MaxwellBoltzmannSim'
+                equations: `$$ x(t) = A \\cos(\\omega t) $$\\<br>$$ \\omega = \\sqrt{\\frac{k}{m}} $$`,
+                engine: 'hybrid', ClassRef: 'HarmonicOscillatorSim'
             },
             'em-wave': {
-                id: 'em-wave',
-                subjectId: 'electromagnetism',
-                category: 'Electromagnetic Theory',
-                title: 'Electromagnetic Wave Propagation',
-                difficulty: 'Advanced',
+                id: 'em-wave', subjectId: 'electromagnetism', category: 'Electromagnetic Theory',
+                title: 'Electromagnetic Wave Propagation', difficulty: 'Advanced',
                 description: 'Visualize the perpendicular oscillating electric and magnetic fields comprising a propagating light wave in a vacuum.',
-                objectives: [
-                    "Visualize transversality (E ⟂ B ⟂ k).",
-                    "Understand wavelength and frequency relationship.",
-                    "Observe phase synchrony in vacuum."
-                ],
+                objectives: ["Visualize transversality (E ⟂ B ⟂ k).", "Understand wavelength and frequency relationship."],
                 params: [
                     { id: 'lambda', name: 'Wavelength (λ)', type: 'slider', min: 400, max: 700, step: 10, default: 500, unit: 'nm' },
                     { id: 'speed', name: 'Animation Speed', type: 'slider', min: 0.1, max: 2, step: 0.1, default: 1, unit: 'x' }
                 ],
-                equations: `
-                    **Electric Field:**
-                    $$ \\vec{E}(z,t) = E_0 \\cos(kz - \\omega t) \\hat{i} $$
-                    **Magnetic Field:**
-                    $$ \\vec{B}(z,t) = B_0 \\cos(kz - \\omega t) \\hat{j} $$
-                    **Wave Number & Frequency:**
-                    $$ k = \\frac{2\\pi}{\\lambda}, \\quad \\omega = kc $$
-                `,
-                engine: 'canvas',
-                ClassRef: 'EMWaveSim'
+                equations: `$$ \\vec{E}(z,t) = E_0 \\cos(kz - \\omega t) \\hat{i} $$\\<br>$$ \\vec{B}(z,t) = B_0 \\cos(kz - \\omega t) \\hat{j} $$`,
+                engine: 'canvas', ClassRef: 'EMWaveSim'
             }
         };
 
         const Subjects = {
-            'quantum': { title: 'Quantum Mechanics', icon: 'atom', color: 'text-purple-400', desc: 'Wave functions, tunneling, quantization.' },
-            'electromagnetism': { title: 'Electromagnetic Theory', icon: 'zap', color: 'text-yellow-400', desc: 'Statics, dynamics, Maxwell\'s equations.' },
-            'mechanics': { title: 'Classical Mechanics', icon: 'settings', color: 'text-orange-400', desc: 'Kinematics, dynamics, orbital motion.' },
-            'thermo': { title: 'Thermodynamics', icon: 'thermometer', color: 'text-red-400', desc: 'Statistical mechanics, heat engines.' }
+            'quantum': { title: 'Quantum Mechanics', icon: 'atom', color: 'text-purple-400', desc: 'Wave functions, probability, tunneling, and quantization.' },
+            'electromagnetism': { title: 'Electromagnetic Theory', icon: 'zap', color: 'text-yellow-400', desc: 'Statics, dynamics, and Maxwell\'s equations.' },
+            'mechanics': { title: 'Classical Mechanics', icon: 'settings', color: 'text-orange-400', desc: 'Kinematics, dynamics, and orbital motion.' },
+            'thermo': { title: 'Thermodynamics & Modern', icon: 'thermometer', color: 'text-red-400', desc: 'Statistical mechanics, heat engines, and relativity.' }
         };
 
-        // --- 3. SIMULATION IMPLEMENTATIONS ---
-
-        // Base class for lifecycle management
         class Simulation {
             constructor(config, container) {
-                this.config = config;
-                this.container = container;
+                this.config = config; this.container = container;
                 this.params = {};
-                // Initialize default params
                 config.params.forEach(p => this.params[p.id] = parseFloat(p.default));
-                this.animId = null;
-                this.isRunning = true;
+                this.animId = null; this.isRunning = true;
             }
-            updateParam(id, value) {
-                this.params[id] = parseFloat(value);
-                this.render();
-            }
+            updateParam(id, value) { this.params[id] = parseFloat(value); this.render(); }
             startLoop(drawFunc) {
                 const loop = (timestamp) => {
                     if (!this.isRunning) return;
@@ -451,156 +380,21 @@
                 if (this.animId) cancelAnimationFrame(this.animId);
                 this.container.innerHTML = '';
             }
-            render() {} // Override
+            render() {} 
         }
 
-        // 3.0 Iframe Engine (For loading separate HTML files)
         class IframeSim extends Simulation {
             init() {
-                // Creates an iframe to load external HTML simulations
-                // bg-white is used so that standard HTML files without dark mode stay readable
-                this.container.innerHTML = `<iframe src="${this.config.url}" class="w-full h-full border-0 rounded bg-white" title="${this.config.title}"></iframe>`;
-            }
-            updateParam(id, value) {
-                super.updateParam(id, value);
-                // Advanced: Send data to the iframe if the external HTML listens for Window postMessages
-                const iframe = this.container.querySelector('iframe');
-                if (iframe && iframe.contentWindow) {
-                    iframe.contentWindow.postMessage({ type: 'UPDATE_PARAM', id, value }, '*');
-                }
+                this.container.innerHTML = `<iframe src="${this.config.url}" class="external-sim-iframe" title="${this.config.title}"></iframe>`;
             }
         }
 
-        // 3.0.1 Quantum Tunneling
-        class QuantumTunnelingSim extends Simulation {
-            init() {
-                this.container.innerHTML = '<div id="qt-plotly" style="width:100%;height:100%;"></div>';
-                this.render();
-            }
-            render() {
-                const E = this.params.energy;
-                const V0 = this.params.v0;
-                const a = this.params.width;
-
-                const x = [], V = [], psiRe = [], psiSq = [];
-                const k1 = Math.sqrt(E);
-                const kappa = V0 > E ? Math.sqrt(V0 - E) : 0;
-                const k2 = V0 < E ? Math.sqrt(E - V0) : 0;
-                
-                for(let i = -2; i <= 3; i += 0.02) {
-                    x.push(i);
-                    if (i < 0) {
-                        V.push(0);
-                        let re = Math.cos(k1 * 10 * i) + (V0 > E ? 0.5 * Math.cos(-k1 * 10 * i) : 0);
-                        psiRe.push(re*0.4 + E);
-                        psiSq.push(re*re * 0.1 + E);
-                    } else if (i >= 0 && i <= a) {
-                        V.push(V0);
-                        if (V0 > E) {
-                            let decay = Math.exp(-kappa * 5 * i);
-                            psiRe.push(decay*0.4 + E);
-                            psiSq.push(decay*decay * 0.1 + E);
-                        } else {
-                            let osc = Math.cos(k2 * 10 * i);
-                            psiRe.push(osc*0.4 + E);
-                            psiSq.push(osc*osc * 0.1 + E);
-                        }
-                    } else {
-                        V.push(0);
-                        if (V0 > E) {
-                            let amp = Math.exp(-kappa * 5 * a);
-                            let trans = amp * Math.cos(k1 * 10 * (i - a));
-                            psiRe.push(trans*0.4 + E);
-                            psiSq.push(trans*trans * 0.1 + E);
-                        } else {
-                            let trans = Math.cos(k1 * 10 * (i - a));
-                            psiRe.push(trans*0.4 + E);
-                            psiSq.push(trans*trans * 0.1 + E);
-                        }
-                    }
-                }
-
-                const traceV = { x: x, y: V, type: 'scatter', mode: 'lines', name: 'V(x)', line: {color: '#94a3b8', width: 3, shape: 'hv'} };
-                const traceE = { x: [-2, 3], y: [E, E], type: 'scatter', mode: 'lines', name: 'Energy (E)', line: {color: '#06b6d4', width: 2, dash: 'dash'} };
-                const tracePsi = { x: x, y: psiRe, type: 'scatter', mode: 'lines', name: 'Re[ψ]', line: {color: '#a855f7', width: 2} };
-                const traceProb = { x: x, y: psiSq, type: 'scatter', mode: 'lines', name: '|ψ|²', fill: 'tonexty', fillcolor: 'rgba(239, 68, 68, 0.2)', line: {color: '#ef4444', width: 1} };
-
-                const layout = {
-                    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#cbd5e1' },
-                    xaxis: { title: 'Position x (nm)', gridcolor: '#334155' },
-                    yaxis: { title: 'Energy / Amplitude', range: [-0.5, Math.max(3.5, V0 + 1)], gridcolor: '#334155' },
-                    margin: { t: 40, b: 40, l: 50, r: 20 }
-                };
-
-                Plotly.react('qt-plotly', [traceV, traceE, traceProb, tracePsi], layout, {displayModeBar: false});
-            }
-        }
-
-        // 3.1 Infinite Potential Well
-        class InfiniteWellSim extends Simulation {
-            init() {
-                this.container.innerHTML = '<div id="plotly-div" style="width:100%;height:100%;"></div>';
-                this.render();
-            }
-            render() {
-                const n = this.params.n;
-                const L = this.params.L; // in nm
-                const massFactor = this.params.mass; // 1 for e, larger for muon
-                
-                const points = 500;
-                const x = [], psi = [], prob = [], v = [], eLine = [];
-                
-                // Constants adapted for reasonable display scaling
-                const E0 = (1 / massFactor) * (1 / (L*L)); 
-                const En = n * n * E0;
-
-                for (let i = 0; i <= points; i++) {
-                    const xi = (i / points) * L;
-                    x.push(xi);
-                    
-                    // psi = sqrt(2/L) * sin(n*pi*x/L)
-                    const psiVal = Math.sqrt(2/L) * Math.sin((n * Math.PI * xi) / L);
-                    psi.push(psiVal + En); // Offset by energy for visualization
-                    prob.push((psiVal * psiVal) + En);
-                    
-                    v.push(0); // Potential is 0 inside
-                    eLine.push(En);
-                }
-
-                // Add walls
-                x.unshift(0); v.unshift(En * 2); psi.unshift(En*2); prob.unshift(En*2);
-                x.push(L); v.push(En * 2); psi.push(En*2); prob.push(En*2);
-
-                const traceV = { x: x, y: v, type: 'scatter', mode: 'lines', name: 'V(x)', line: {color: '#94a3b8', width: 4, shape: 'hv'} };
-                const traceE = { x: x, y: eLine, type: 'scatter', mode: 'lines', name: `E_${n}`, line: {color: '#06b6d4', width: 2, dash: 'dash'} };
-                const tracePsi = { x: x, y: psi, type: 'scatter', mode: 'lines', name: 'ψ(x)', line: {color: '#a855f7', width: 2}, fill: 'tonexty', fillcolor: 'rgba(168, 85, 247, 0.1)' };
-                const traceProb = { x: x, y: prob, type: 'scatter', mode: 'lines', name: '|ψ(x)|²', line: {color: '#ef4444', width: 2}, fill: 'tonexty', fillcolor: 'rgba(239, 68, 68, 0.2)' };
-
-                const layout = {
-                    paper_bgcolor: 'rgba(0,0,0,0)',
-                    plot_bgcolor: 'rgba(0,0,0,0)',
-                    font: { color: '#cbd5e1' },
-                    xaxis: { title: 'Position x (nm)', range: [-0.1*L, 1.1*L], gridcolor: '#334155' },
-                    yaxis: { title: 'Energy (arb. units)', range: [0, Math.max(En * 2.5, 5)], gridcolor: '#334155' },
-                    margin: { t: 40, b: 40, l: 50, r: 20 },
-                    showlegend: true,
-                    legend: { orientation: "h", yanchor: "bottom", y: 1.02, xanchor: "right", x: 1 }
-                };
-
-                Plotly.newPlot('plotly-div', [traceV, traceE, tracePsi, traceProb], layout, {responsive: true, displayModeBar: false});
-            }
-        }
-
-        // 3.2 Electric Field Vectors
         class ElectricFieldSim extends Simulation {
             init() {
                 this.container.innerHTML = '<canvas id="sim-canvas"></canvas>';
                 this.canvas = document.getElementById('sim-canvas');
                 this.ctx = this.canvas.getContext('2d');
-                this.charges = [
-                    {x: 0.3, y: 0.5, q: 2},
-                    {x: 0.7, y: 0.5, q: -2}
-                ];
+                this.charges = [ {x: 0.3, y: 0.5, q: 2}, {x: 0.7, y: 0.5, q: -2} ];
                 
                 this.resize = () => {
                     this.canvas.width = this.container.clientWidth;
@@ -610,11 +404,7 @@
                 window.addEventListener('resize', this.resize);
                 this.resize();
 
-                // Interactions
-                let dragging = null;
-                let isAdding = false;
-                
-                // Expose to custom UI buttons
+                let dragging = null; let isAdding = false;
                 window.handleCustomSimAction = (action) => {
                     if (action === 'add') { isAdding = true; this.canvas.style.cursor = 'crosshair'; }
                     if (action === 'clear') { this.charges = []; this.render(); }
@@ -627,18 +417,11 @@
                     
                     if (isAdding) {
                         this.charges.push({x, y, q: this.params.chargeMag});
-                        isAdding = false;
-                        this.canvas.style.cursor = 'default';
-                        this.render();
-                        return;
+                        isAdding = false; this.canvas.style.cursor = 'default';
+                        this.render(); return;
                     }
-
-                    // Check if clicking existing charge
                     for (let c of this.charges) {
-                        if (MathUtils.dist(x*this.canvas.width, y*this.canvas.height, c.x*this.canvas.width, c.y*this.canvas.height) < 20) {
-                            dragging = c;
-                            break;
-                        }
+                        if (MathUtils.dist(x*this.canvas.width, y*this.canvas.height, c.x*this.canvas.width, c.y*this.canvas.height) < 20) { dragging = c; break; }
                     }
                 });
                 
@@ -649,156 +432,57 @@
                     dragging.y = (e.clientY - rect.top) / this.canvas.height;
                     this.render();
                 });
-                
                 this.canvas.addEventListener('mouseup', () => { dragging = null; });
             }
-            
-            destroy() {
-                super.destroy();
-                window.removeEventListener('resize', this.resize);
-                delete window.handleCustomSimAction;
-            }
+            destroy() { super.destroy(); window.removeEventListener('resize', this.resize); delete window.handleCustomSimAction; }
 
             render() {
-                const w = this.canvas.width;
-                const h = this.canvas.height;
-                const ctx = this.ctx;
-                
-                ctx.fillStyle = '#0f172a';
-                ctx.fillRect(0, 0, w, h);
-                
+                const w = this.canvas.width; const h = this.canvas.height; const ctx = this.ctx;
+                ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, w, h);
                 const res = this.params.gridRes;
-                const dx = w / res;
-                const dy = h / res;
+                const dx = w / res; const dy = h / res;
                 
-                // Draw Vector Field
                 for (let i = 0; i <= res; i++) {
                     for (let j = 0; j <= res; j++) {
-                        const px = i * dx;
-                        const py = j * dy;
-                        
+                        const px = i * dx; const py = j * dy;
                         let Ex = 0, Ey = 0;
                         for (let c of this.charges) {
-                            const cx = c.x * w;
-                            const cy = c.y * h;
+                            const cx = c.x * w; const cy = c.y * h;
                             const r2 = MathUtils.dist2(px, py, cx, cy);
-                            if (r2 < 1) continue; // prevent singularity
+                            if (r2 < 1) continue; 
                             const r = Math.sqrt(r2);
-                            const E = c.q / r2; // ignoring k for vis scale
-                            Ex += E * (px - cx) / r;
-                            Ey += E * (py - cy) / r;
+                            const E = c.q / r2; 
+                            Ex += E * (px - cx) / r; Ey += E * (py - cy) / r;
                         }
-                        
                         const mag = Math.sqrt(Ex*Ex + Ey*Ey);
                         if (mag === 0) continue;
+                        const drawLen = Math.min(dx * 0.8, (Math.log10(mag * 10000 + 1) / 3) * dx * 0.4);
+                        const ux = (Ex / mag) * drawLen; const uy = (Ey / mag) * drawLen;
                         
-                        // Normalize and scale for rendering
-                        const maxLen = dx * 0.8;
-                        // Log scale length to show weak fields
-                        const drawLen = Math.min(maxLen, (Math.log10(mag * 10000 + 1) / 3) * maxLen * 0.5);
-                        
-                        const ux = (Ex / mag) * drawLen;
-                        const uy = (Ey / mag) * drawLen;
-                        
-                        // Color mapping based on potential/magnitude
                         const hue = MathUtils.map(Math.min(mag, 0.05), 0, 0.05, 200, 360);
-                        ctx.strokeStyle = `hsla(${hue}, 80%, 60%, 0.6)`;
-                        ctx.lineWidth = 1.5;
-                        
+                        ctx.strokeStyle = `hsla(${hue}, 80%, 60%, 0.6)`; ctx.lineWidth = 1.5;
                         this.drawArrow(ctx, px, py, px + ux, py + uy);
                     }
                 }
                 
-                // Draw Charges
                 for (let c of this.charges) {
-                    ctx.beginPath();
-                    ctx.arc(c.x * w, c.y * h, Math.abs(c.q)*3 + 5, 0, Math.PI*2);
-                    ctx.fillStyle = c.q > 0 ? '#ef4444' : '#3b82f6';
-                    ctx.fill();
-                    ctx.strokeStyle = 'white';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
-                    ctx.fillStyle = 'white';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.font = '12px Inter';
-                    ctx.fillText(c.q > 0 ? '+' : '-', c.x * w, c.y * h);
+                    ctx.beginPath(); ctx.arc(c.x * w, c.y * h, Math.abs(c.q)*3 + 5, 0, Math.PI*2);
+                    ctx.fillStyle = c.q > 0 ? '#ef4444' : '#3b82f6'; ctx.fill();
+                    ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+                    ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.font = '12px Inter'; ctx.fillText(c.q > 0 ? '+' : '-', c.x * w, c.y * h);
                 }
             }
             
             drawArrow(ctx, fromx, fromy, tox, toy) {
-                const headlen = 4;
-                const dx = tox - fromx;
-                const dy = toy - fromy;
-                const angle = Math.atan2(dy, dx);
-                ctx.beginPath();
-                ctx.moveTo(fromx, fromy);
-                ctx.lineTo(tox, toy);
+                const headlen = 4; const angle = Math.atan2(toy - fromy, tox - fromx);
+                ctx.beginPath(); ctx.moveTo(fromx, fromy); ctx.lineTo(tox, toy);
                 ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
                 ctx.moveTo(tox, toy);
-                ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
-                ctx.stroke();
+                ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6)); ctx.stroke();
             }
         }
 
-        // 3.3 Maxwell Boltzmann
-        class MaxwellBoltzmannSim extends Simulation {
-            init() {
-                this.container.innerHTML = '<div id="mb-plotly" style="width:100%;height:100%;"></div>';
-                this.render();
-            }
-            render() {
-                const T = this.params.T;
-                const m_amu = this.params.mass;
-                const m_kg = m_amu * 1.660539e-27;
-                const kB = Constants.kB;
-                
-                const speeds = [];
-                const probs = [];
-                
-                // Determine sensible speed range based on Vrms
-                const vrms = Math.sqrt(3 * kB * T / m_kg);
-                const max_v = vrms * 3;
-                
-                const factor1 = 4 * Math.PI * Math.pow(m_kg / (2 * Math.PI * kB * T), 1.5);
-                
-                for(let v = 0; v < max_v; v += max_v/200) {
-                    speeds.push(v);
-                    const exponent = -(m_kg * v * v) / (2 * kB * T);
-                    const f_v = factor1 * v * v * Math.exp(exponent);
-                    probs.push(f_v);
-                }
-
-                const trace = { 
-                    x: speeds, y: probs, 
-                    type: 'scatter', mode: 'lines', name: 'f(v)', 
-                    line: {color: '#f59e0b', width: 3},
-                    fill: 'tozeroy', fillcolor: 'rgba(245, 158, 11, 0.2)'
-                };
-                
-                const v_mp = Math.sqrt(2 * kB * T / m_kg); // most probable
-                
-                const shapes = [
-                    { type: 'line', x0: v_mp, y0: 0, x1: v_mp, y1: Math.max(...probs), line: {color: 'white', width: 1, dash: 'dot'} }
-                ];
-
-                const layout = {
-                    paper_bgcolor: 'rgba(0,0,0,0)',
-                    plot_bgcolor: 'rgba(0,0,0,0)',
-                    font: { color: '#cbd5e1' },
-                    xaxis: { title: 'Speed v (m/s)', range: [0, max_v], gridcolor: '#334155' },
-                    yaxis: { title: 'Probability Density f(v)', gridcolor: '#334155', zeroline: false },
-                    margin: { t: 40, b: 40, l: 60, r: 20 },
-                    shapes: shapes,
-                    annotations: [{ x: v_mp, y: Math.max(...probs)*1.05, text: `v_mp ≈ ${Math.round(v_mp)} m/s`, showarrow: false, font: {color: 'white', size: 10} }]
-                };
-
-                Plotly.newPlot('mb-plotly', [trace], layout, {responsive: true, displayModeBar: false});
-            }
-        }
-
-        // 3.4 Harmonic Oscillator
         class HarmonicOscillatorSim extends Simulation {
             init() {
                 this.container.innerHTML = `
@@ -807,185 +491,91 @@
                         <div id="ho-plot" class="flex-1"></div>
                     </div>
                 `;
-                this.canvas = document.getElementById('ho-canvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.time = 0;
-                this.history = { t: [], x: [] };
-                
-                this.resize = () => {
-                    this.canvas.width = this.canvas.clientWidth;
-                    this.canvas.height = this.canvas.clientHeight;
-                };
-                window.addEventListener('resize', this.resize);
-                this.resize();
-                
+                this.canvas = document.getElementById('ho-canvas'); this.ctx = this.canvas.getContext('2d');
+                this.time = 0; this.history = { t: [], x: [] };
+                this.resize = () => { this.canvas.width = this.canvas.clientWidth; this.canvas.height = this.canvas.clientHeight; };
+                window.addEventListener('resize', this.resize); this.resize();
                 this.startLoop((timestamp) => this.draw(timestamp));
             }
-
-            destroy() {
-                super.destroy();
-                window.removeEventListener('resize', this.resize);
-            }
+            destroy() { super.destroy(); window.removeEventListener('resize', this.resize); }
 
             draw(timestamp) {
-                // Throttle physics updates
                 if(!this.lastTime) this.lastTime = timestamp;
-                const dt = (timestamp - this.lastTime) / 1000; // seconds
-                this.lastTime = timestamp;
+                const dt = (timestamp - this.lastTime) / 1000;
+                this.lastTime = timestamp; this.time += dt;
                 
-                this.time += dt;
+                const m = this.params.m; const k = this.params.k; const A = this.params.A;
+                const omega = Math.sqrt(k / m); const x = A * Math.cos(omega * this.time);
                 
-                const m = this.params.m;
-                const k = this.params.k;
-                const A = this.params.A;
-                
-                const omega = Math.sqrt(k / m);
-                const x = A * Math.cos(omega * this.time);
-                
-                // Visuals
-                const w = this.canvas.width;
-                const h = this.canvas.height;
-                const ctx = this.ctx;
-                
+                const w = this.canvas.width; const h = this.canvas.height; const ctx = this.ctx;
                 ctx.clearRect(0, 0, w, h);
-                
-                const originX = w / 2;
-                const ceilingY = 20;
-                
-                // Map logical x (-2 to 2) to pixels
+                const originX = w / 2; const ceilingY = 20;
                 const scale = (h - 100) / 4; 
-                const blockY = h/2 + x * scale;
-                const blockW = 40 + m * 5; // Size depends on mass
+                const blockY = h/2 + x * scale; const blockW = 40 + m * 5; 
                 
-                // Draw ceiling
-                ctx.fillStyle = '#64748b';
-                ctx.fillRect(originX - 50, 0, 100, ceilingY);
-                
-                // Draw Spring
-                ctx.strokeStyle = '#94a3b8';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(originX, ceilingY);
+                ctx.fillStyle = '#64748b'; ctx.fillRect(originX - 50, 0, 100, ceilingY);
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(originX, ceilingY);
                 const coils = 10;
                 for(let i=1; i<=coils; i++) {
                     const py = ceilingY + (blockY - ceilingY) * (i / coils);
                     const px = originX + (i % 2 === 0 ? 15 : -15);
-                    if(i === coils) ctx.lineTo(originX, blockY);
-                    else ctx.lineTo(px, py);
-                }
-                ctx.stroke();
+                    if(i === coils) ctx.lineTo(originX, blockY); else ctx.lineTo(px, py);
+                } ctx.stroke();
                 
-                // Draw Mass
-                ctx.fillStyle = '#38bdf8';
-                ctx.fillRect(originX - blockW/2, blockY, blockW, blockW);
-                ctx.strokeStyle = '#0284c7';
-                ctx.strokeRect(originX - blockW/2, blockY, blockW, blockW);
+                ctx.fillStyle = '#38bdf8'; ctx.fillRect(originX - blockW/2, blockY, blockW, blockW);
+                ctx.strokeStyle = '#0284c7'; ctx.strokeRect(originX - blockW/2, blockY, blockW, blockW);
                 
-                // Update Plotly every ~100ms to save resources
                 if (Math.floor(this.time * 10) % 2 === 0) {
-                    this.history.t.push(this.time);
-                    this.history.x.push(x);
-                    if (this.history.t.length > 100) {
-                        this.history.t.shift();
-                        this.history.x.shift();
-                    }
+                    this.history.t.push(this.time); this.history.x.push(x);
+                    if (this.history.t.length > 100) { this.history.t.shift(); this.history.x.shift(); }
                     this.updatePlot();
                 }
             }
-
             updatePlot() {
                 if(!document.getElementById('ho-plot')) return;
-                const trace = {
-                    x: this.history.t, y: this.history.x,
-                    type: 'scatter', mode: 'lines', line: {color: '#38bdf8', width: 2}
-                };
-                const layout = {
-                    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#cbd5e1' },
-                    xaxis: { title: 'Time (s)', gridcolor: '#334155' },
-                    yaxis: { title: 'Displacement x (m)', range: [-this.params.A*1.2, this.params.A*1.2], gridcolor: '#334155' },
-                    margin: { t: 10, b: 40, l: 50, r: 20 }
-                };
+                const trace = { x: this.history.t, y: this.history.x, type: 'scatter', mode: 'lines', line: {color: '#38bdf8', width: 2} };
+                const layout = { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#cbd5e1' }, margin: { t: 10, b: 40, l: 50, r: 20 }, yaxis: { range: [-2.5, 2.5] } };
                 Plotly.react('ho-plot', [trace], layout, {displayModeBar: false});
             }
         }
 
-        // 3.5 Electromagnetic Wave (2.5D Canvas Render)
         class EMWaveSim extends Simulation {
             init() {
                 this.container.innerHTML = '<canvas id="em-canvas"></canvas>';
-                this.canvas = document.getElementById('em-canvas');
-                this.ctx = this.canvas.getContext('2d');
+                this.canvas = document.getElementById('em-canvas'); this.ctx = this.canvas.getContext('2d');
                 this.time = 0;
-                
-                this.resize = () => {
-                    this.canvas.width = this.container.clientWidth;
-                    this.canvas.height = this.container.clientHeight;
-                };
-                window.addEventListener('resize', this.resize);
-                this.resize();
-                
+                this.resize = () => { this.canvas.width = this.container.clientWidth; this.canvas.height = this.container.clientHeight; };
+                window.addEventListener('resize', this.resize); this.resize();
                 this.startLoop(() => this.draw());
             }
-
-            destroy() {
-                super.destroy();
-                window.removeEventListener('resize', this.resize);
-            }
-
+            destroy() { super.destroy(); window.removeEventListener('resize', this.resize); }
             draw() {
                 this.time += 0.05 * this.params.speed;
-                const w = this.canvas.width;
-                const h = this.canvas.height;
-                const ctx = this.ctx;
+                const w = this.canvas.width; const h = this.canvas.height; const ctx = this.ctx;
+                ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, w, h);
+                const ox = 50; const oy = h / 2; const zScale = 0.5; 
                 
-                ctx.fillStyle = '#020617';
-                ctx.fillRect(0, 0, w, h);
-                
-                // Center and projection setup
-                const ox = 50;
-                const oy = h / 2;
-                const zScale = 0.5; // skew for pseudo 3D
-                
-                // Draw axes
-                ctx.strokeStyle = '#475569';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(0, oy); ctx.lineTo(w, oy); // Z axis (prop)
-                ctx.moveTo(ox, 0); ctx.lineTo(ox, h); // X axis (E)
-                ctx.moveTo(ox - 100*zScale, oy + 100*zScale); ctx.lineTo(ox + 200*zScale, oy - 200*zScale); // Y axis (B)
+                ctx.strokeStyle = '#475569'; ctx.lineWidth = 1; ctx.beginPath();
+                ctx.moveTo(0, oy); ctx.lineTo(w, oy); 
+                ctx.moveTo(ox, 0); ctx.lineTo(ox, h); 
+                ctx.moveTo(ox - 100*zScale, oy + 100*zScale); ctx.lineTo(ox + 200*zScale, oy - 200*zScale); 
                 ctx.stroke();
 
-                const lambdaPixels = this.params.lambda; // Scale for vis
-                const k = (2 * Math.PI) / lambdaPixels;
-                const amplitude = h * 0.25;
-
-                // Draw waves
+                const k = (2 * Math.PI) / this.params.lambda; const amplitude = h * 0.25;
                 ctx.lineWidth = 2;
                 
                 for (let z = 0; z < w; z += 5) {
-                    const phase = k * z - this.time;
-                    const val = Math.cos(phase) * amplitude;
-                    
-                    // Electric Field (XY Plane, up/down)
+                    const phase = k * z - this.time; const val = Math.cos(phase) * amplitude;
                     if (z % 20 === 0) {
-                        ctx.strokeStyle = '#ef4444'; // Red for E
-                        ctx.beginPath();
-                        ctx.moveTo(ox + z, oy);
-                        ctx.lineTo(ox + z, oy - val);
-                        ctx.stroke();
+                        ctx.strokeStyle = '#ef4444'; ctx.beginPath();
+                        ctx.moveTo(ox + z, oy); ctx.lineTo(ox + z, oy - val); ctx.stroke();
                     }
-                    
-                    // Magnetic Field (XZ Plane, skewed)
                     if (z % 20 === 0) {
-                        ctx.strokeStyle = '#3b82f6'; // Blue for B
-                        ctx.beginPath();
-                        ctx.moveTo(ox + z, oy);
-                        ctx.lineTo(ox + z + val*zScale, oy - val*zScale);
-                        ctx.stroke();
+                        ctx.strokeStyle = '#3b82f6'; ctx.beginPath();
+                        ctx.moveTo(ox + z, oy); ctx.lineTo(ox + z + val*zScale, oy - val*zScale); ctx.stroke();
                     }
                 }
                 
-                // Draw Envelopes
                 ctx.beginPath(); ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
                 for (let z = 0; z < w; z++) {
                     const y = oy - Math.cos(k * z - this.time) * amplitude;
@@ -995,124 +585,81 @@
                 ctx.beginPath(); ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
                 for (let z = 0; z < w; z++) {
                     const val = Math.cos(k * z - this.time) * amplitude;
-                    const bX = ox + z + val*zScale;
-                    const bY = oy - val*zScale;
+                    const bX = ox + z + val*zScale; const bY = oy - val*zScale;
                     z === 0 ? ctx.moveTo(bX, bY) : ctx.lineTo(bX, bY);
                 } ctx.stroke();
-
-                // Legend
-                ctx.fillStyle = '#ef4444'; ctx.fillText("E-Field", 20, 30);
-                ctx.fillStyle = '#3b82f6'; ctx.fillText("B-Field", 20, 50);
-                ctx.fillStyle = 'white'; ctx.fillText("Propagation (k)", w - 100, oy - 10);
             }
         }
 
-        // --- 4. APP STATE & ROUTING ---
-        const AppState = {
-            currentSim: null, // Instance of Simulation class
-            activeTab: 'explore'
-        };
+        const AppState = { currentSim: null, activeTab: 'explore' };
 
         function navigate(view, data = null) {
             const content = document.getElementById('app-content');
-            
-            // Cleanup current simulation if any
-            if (AppState.currentSim) {
-                AppState.currentSim.destroy();
-                AppState.currentSim = null;
-            }
-
-            if (view === 'home') {
-                renderHome(content);
-            } else if (view === 'subject') {
-                renderSubject(content, data);
-            } else if (view === 'simulation') {
-                renderSimulation(content, data);
-            } else {
-                renderHome(content); // Default
-            }
-            
-            // Re-initialize icons
-            lucide.createIcons();
-            window.scrollTo(0, 0);
+            if (AppState.currentSim) { AppState.currentSim.destroy(); AppState.currentSim = null; }
+            if (view === 'home') renderHome(content);
+            else if (view === 'subject') renderSubject(content, data);
+            else if (view === 'simulation') renderSimulation(content, data);
+            else renderHome(content); 
+            lucide.createIcons(); window.scrollTo(0, 0);
         }
 
-        // Simple router based on hash
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.substring(1);
             if (!hash) { navigate('home'); return; }
-            
             const parts = hash.split('/');
-            if (parts[0] === 'subject' && parts[1]) {
-                navigate('subject', parts[1]);
-            } else if (parts[0] === 'sim' && parts[1]) {
-                navigate('simulation', parts[1]);
-            } else {
-                navigate('home');
-            }
+            if (parts[0] === 'subject' && parts[1]) navigate('subject', parts[1]);
+            else if (parts[0] === 'sim' && parts[1]) navigate('simulation', parts[1].replace(/%20/g, ' '));
+            else navigate('home');
         });
-
-        // --- 5. UI RENDERING FUNCTIONS ---
 
         function renderHome(container) {
             let simCards = '';
             for (const [id, sim] of Object.entries(Registry)) {
                 simCards += `
-                    <div onclick="window.location.hash='#sim/${id}'" class="glass-panel rounded-xl p-6 cursor-pointer hover:border-sci-accent transition-all hover:-translate-y-1 group relative overflow-hidden">
-                        <div class="absolute inset-0 bg-gradient-to-br from-sci-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="flex justify-between items-start mb-4 relative z-10">
-                            <span class="text-xs font-semibold px-2 py-1 bg-slate-800 rounded text-slate-300 border border-slate-700">${sim.category}</span>
-                            <span class="flex items-center text-xs ${sim.difficulty === 'Beginner' ? 'text-green-400' : sim.difficulty === 'Intermediate' ? 'text-yellow-400' : 'text-red-400'}">
-                                <span class="w-2 h-2 rounded-full currentColor mr-1 bg-current"></span> ${sim.difficulty}
-                            </span>
+                    <div onclick="window.location.hash='#sim/${id}'" class="glass-panel rounded-xl p-6 cursor-pointer hover:border-sci-accent transition-all hover:-translate-y-1 group relative overflow-hidden flex flex-col justify-between h-48">
+                        <div>
+                            <div class="flex justify-between items-start mb-2 relative z-10">
+                                <span class="text-[10px] font-semibold px-2 py-1 bg-slate-800 rounded text-slate-300 border border-slate-700">${sim.category}</span>
+                                <span class="flex items-center text-xs ${sim.difficulty === 'Beginner' ? 'text-green-400' : sim.difficulty === 'Intermediate' ? 'text-yellow-400' : 'text-red-400'}">
+                                    ${sim.difficulty}
+                                </span>
+                            </div>
+                            <h3 class="text-md font-bold text-white mb-1 leading-tight relative z-10 group-hover:text-sci-accent transition-colors">${sim.title}</h3>
+                            <p class="text-xs text-slate-400 line-clamp-2 relative z-10">${sim.description}</p>
                         </div>
-                        <h3 class="text-lg font-bold text-white mb-2 relative z-10">${sim.title}</h3>
-                        <p class="text-sm text-slate-400 line-clamp-2 relative z-10">${sim.description}</p>
-                        <div class="mt-4 flex items-center text-sci-accent text-sm font-medium relative z-10">
-                            Open Lab <i data-lucide="arrow-right" class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"></i>
+                        <div class="mt-2 flex items-center text-sci-accent text-xs font-medium relative z-10 self-start bg-sci-accent/10 px-2 py-1 rounded">
+                            Open Lab <i data-lucide="arrow-right" class="w-3 h-3 ml-1"></i>
                         </div>
                     </div>
                 `;
             }
 
             container.innerHTML = `
-                <!-- Hero Section -->
                 <div class="relative py-24 px-6 flex flex-col items-center text-center overflow-hidden border-b border-slate-800">
                     <canvas id="hero-canvas"></canvas>
                     <div class="relative z-10 max-w-3xl">
-                        <div class="inline-flex items-center px-3 py-1 rounded-full bg-sci-900 border border-sci-800 text-sci-accent text-sm font-semibold mb-6 shadow-lg shadow-sci-accent/20">
+                        <div class="inline-flex items-center px-3 py-1 rounded-full bg-sci-900 border border-sci-800 text-sci-accent text-sm font-semibold mb-6">
                             <i data-lucide="flask-conical" class="w-4 h-4 mr-2"></i> Virtual Research Environment v2.0
                         </div>
                         <h1 class="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-6">
                             Interactive <span class="text-transparent bg-clip-text bg-gradient-to-r from-sci-accent to-blue-500">Physics</span> Laboratory
                         </h1>
                         <p class="text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-                            A production-grade scientific computing platform for undergraduate and research-level simulation, data visualization, and interactive learning.
+                            A production-grade platform combining native algorithmic simulation engines and modular external physics laboratories.
                         </p>
-                        <div class="flex justify-center space-x-4">
-                            <button onclick="window.location.hash='#subject/quantum'" class="px-8 py-3 rounded-md bg-sci-accent text-slate-900 font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-sci-accent/30 flex items-center">
-                                Start Exploring <i data-lucide="play" class="w-4 h-4 ml-2 fill-current"></i>
-                            </button>
-                        </div>
+                        <button onclick="window.location.hash='#subject/quantum'" class="px-8 py-3 rounded-md bg-sci-accent text-slate-900 font-bold hover:bg-cyan-400 transition-colors shadow-lg shadow-sci-accent/30">
+                            Start Exploring
+                        </button>
                     </div>
                 </div>
 
-                <!-- Stats -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 px-6 py-8 border-b border-slate-800 bg-sci-panel/50">
-                    <div class="text-center"><div class="text-3xl font-bold text-white">5+</div><div class="text-sm text-slate-500 uppercase tracking-wide mt-1">High-Fidelity Sims</div></div>
-                    <div class="text-center"><div class="text-3xl font-bold text-white">4</div><div class="text-sm text-slate-500 uppercase tracking-wide mt-1">Physics Domains</div></div>
-                    <div class="text-center"><div class="text-3xl font-bold text-white">60fps</div><div class="text-sm text-slate-500 uppercase tracking-wide mt-1">Real-Time Compute</div></div>
-                    <div class="text-center"><div class="text-3xl font-bold text-white">100%</div><div class="text-sm text-slate-500 uppercase tracking-wide mt-1">Client-Side</div></div>
-                </div>
-
-                <!-- Featured Simulations -->
-                <div class="py-16 px-6 max-w-7xl mx-auto w-full">
+                <div class="py-16 px-6 max-w-[1400px] mx-auto w-full">
                     <div class="flex items-center justify-between mb-8">
                         <h2 class="text-2xl font-bold text-white flex items-center">
-                            <i data-lucide="microscope" class="w-6 h-6 mr-2 text-sci-accent"></i> Phase 1 Simulations
+                            <i data-lucide="microscope" class="w-6 h-6 mr-2 text-sci-accent"></i> Available Modules & Simulations
                         </h2>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         ${simCards}
                     </div>
                 </div>
@@ -1125,7 +672,6 @@
             if (!subject) return navigate('home');
 
             const sims = Object.values(Registry).filter(s => s.subjectId === subjectId);
-            
             let simCards = sims.map(sim => `
                 <div onclick="window.location.hash='#sim/${sim.id}'" class="glass-panel p-6 rounded-lg cursor-pointer hover:border-sci-accent transition-colors group">
                     <h3 class="text-lg font-bold text-white mb-2 group-hover:text-sci-accent transition-colors">${sim.title}</h3>
@@ -1133,8 +679,6 @@
                     <span class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">Difficulty: ${sim.difficulty}</span>
                 </div>
             `).join('');
-
-            if(simCards === '') simCards = '<p class="text-slate-500">Modules in development.</p>';
 
             container.innerHTML = `
                 <div class="py-12 px-6 max-w-5xl mx-auto w-full">
@@ -1149,7 +693,7 @@
                     
                     <h2 class="text-xl font-semibold text-white mb-6">Available Experiments</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        ${simCards}
+                        ${simCards || '<p class="text-slate-500">Modules in development.</p>'}
                     </div>
                 </div>
             `;
@@ -1159,38 +703,38 @@
             const config = Registry[simId];
             if (!config) return navigate('home');
 
-            // Generate Control Panel UI
             let controlsHTML = '';
-            config.params.forEach(p => {
-                if (p.type === 'slider') {
-                    controlsHTML += `
-                        <div class="mb-5">
-                            <div class="flex justify-between items-end mb-1">
-                                <label class="block text-sm font-medium text-slate-300">${p.name}</label>
-                                <span id="val-${p.id}" class="text-xs font-mono text-sci-accent bg-slate-900 px-2 py-0.5 rounded border border-slate-700">${p.default} ${p.unit}</span>
+            if(config.params) {
+                config.params.forEach(p => {
+                    if (p.type === 'slider') {
+                        controlsHTML += `
+                            <div class="mb-5">
+                                <div class="flex justify-between items-end mb-1">
+                                    <label class="block text-sm font-medium text-slate-300">${p.name}</label>
+                                    <span id="val-${p.id}" class="text-xs font-mono text-sci-accent bg-slate-900 px-2 py-0.5 rounded border border-slate-700">${p.default} ${p.unit}</span>
+                                </div>
+                                <input type="range" id="input-${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.default}" 
+                                    oninput="document.getElementById('val-${p.id}').innerText = this.value + ' ${p.unit}'; updateSimParam('${p.id}', this.value)">
                             </div>
-                            <input type="range" id="input-${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.default}" 
-                                oninput="document.getElementById('val-${p.id}').innerText = this.value + ' ${p.unit}'; updateSimParam('${p.id}', this.value)">
-                        </div>
-                    `;
-                } else if (p.type === 'select') {
-                    let options = p.options.map(opt => `<option value="${opt.val}" ${opt.val == p.default ? 'selected' : ''}>${opt.label}</option>`).join('');
-                    controlsHTML += `
-                        <div class="mb-5">
-                            <label class="block text-sm font-medium text-slate-300 mb-1">${p.name}</label>
-                            <select id="input-${p.id}" class="w-full bg-slate-900 border border-slate-700 rounded-md py-1.5 px-3 text-sm text-slate-300 focus:outline-none focus:border-sci-accent"
-                                onchange="updateSimParam('${p.id}', this.value)">
-                                ${options}
-                            </select>
-                        </div>
-                    `;
-                }
-            });
+                        `;
+                    } else if (p.type === 'select') {
+                        let options = p.options.map(opt => `<option value="${opt.val}" ${opt.val == p.default ? 'selected' : ''}>${opt.label}</option>`).join('');
+                        controlsHTML += `
+                            <div class="mb-5">
+                                <label class="block text-sm font-medium text-slate-300 mb-1">${p.name}</label>
+                                <select id="input-${p.id}" class="w-full bg-slate-900 border border-slate-700 rounded-md py-1.5 px-3 text-sm text-slate-300 focus:outline-none focus:border-sci-accent"
+                                    onchange="updateSimParam('${p.id}', this.value)">
+                                    ${options}
+                                </select>
+                            </div>
+                        `;
+                    }
+                });
+            }
 
             if(config.customControls) controlsHTML += config.customControls;
 
             container.innerHTML = `
-                <!-- Top Bar -->
                 <div class="bg-sci-panel border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-16 z-40">
                     <div class="flex items-center">
                         <button onclick="window.location.hash='#subject/${config.subjectId}'" class="text-slate-400 hover:text-white mr-4 p-1 rounded hover:bg-slate-800">
@@ -1201,25 +745,15 @@
                             <span class="text-xs text-slate-500">${config.category}</span>
                         </div>
                     </div>
-                    <div class="flex space-x-2">
-                        <button class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded text-sm flex items-center transition" onclick="window.dispatchEvent(new Event('resize'))">
-                            <i data-lucide="maximize" class="w-4 h-4 mr-1"></i> Recenter
-                        </button>
-                    </div>
                 </div>
 
-                <!-- Main Layout -->
                 <div class="flex flex-col lg:flex-row flex-grow w-full h-[calc(100vh-120px)]">
-                    
-                    <!-- Sidebar Controls -->
                     <div class="w-full lg:w-80 bg-slate-900 border-r border-slate-800 flex flex-col overflow-y-auto shrink-0">
-                        <!-- Tabs -->
                         <div class="flex border-b border-slate-800 text-sm">
                             <button id="tab-explore" onclick="switchSimTab('explore')" class="flex-1 py-3 font-medium text-center tab-active hover:bg-slate-800 transition">Control Panel</button>
                             <button id="tab-understand" onclick="switchSimTab('understand')" class="flex-1 py-3 font-medium text-center text-slate-400 hover:bg-slate-800 transition">Theory</button>
                         </div>
                         
-                        <!-- Panel Content -->
                         <div id="panel-explore" class="p-5 flex-grow">
                             ${controlsHTML}
                         </div>
@@ -1229,36 +763,33 @@
                                 <h4 class="font-bold text-white mb-1 border-b border-slate-700 pb-1">Description</h4>
                                 <p>${config.description}</p>
                             </div>
+                            ${config.objectives ? `
                             <div class="mb-4">
                                 <h4 class="font-bold text-white mb-1 border-b border-slate-700 pb-1">Learning Objectives</h4>
                                 <ul class="list-disc pl-4 space-y-1 mt-2">
                                     ${config.objectives.map(obj => `<li>${obj}</li>`).join('')}
                                 </ul>
-                            </div>
+                            </div>` : ''}
                             <div>
                                 <h4 class="font-bold text-white mb-1 border-b border-slate-700 pb-1">Mathematical Model</h4>
-                                <div class="math-container text-[13px] bg-black/30 p-2 rounded border border-slate-800 mt-2">
+                                <div class="math-container text-[13px] bg-black/30 p-3 rounded border border-slate-800 mt-2 overflow-x-auto">
                                     ${config.equations}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Visualization Area -->
-                    <div class="flex-grow bg-black relative flex flex-col overflow-hidden">
-                        <div id="sim-container" class="flex-grow w-full h-full relative">
-                            <!-- Canvas or Plotly goes here -->
+                    <div class="flex-grow bg-slate-950 relative flex flex-col overflow-hidden p-2">
+                        <div id="sim-container" class="flex-grow w-full h-full relative border border-slate-800 rounded-lg overflow-hidden shadow-2xl">
+                            <!-- Visualizer content injected here -->
                         </div>
-                        
-                        <!-- Data Overlay (Optional) -->
-                        <div class="absolute bottom-4 right-4 glass-panel px-3 py-2 rounded text-xs font-mono text-slate-400 pointer-events-none hidden md:block">
-                            Engine: ${config.engine.toUpperCase()} | Render: 60fps
+                        <div class="absolute bottom-4 right-4 glass-panel px-3 py-2 rounded text-xs font-mono text-slate-400 pointer-events-none hidden md:block z-10">
+                            Engine: ${config.engine.toUpperCase()}
                         </div>
                     </div>
                 </div>
             `;
 
-            // Attach event listeners for custom buttons if they exist
             if(config.customControls) {
                 const btnAdd = document.getElementById('btnAddCharge');
                 const btnClear = document.getElementById('btnClear');
@@ -1266,44 +797,27 @@
                 if(btnClear) btnClear.onclick = () => window.handleCustomSimAction('clear');
             }
 
-            // Render Math
             renderMathInElement(document.body, {
-                delimiters: [
-                    {left: '$$', right: '$$', display: true},
-                    {left: '$', right: '$', display: false}
-                ],
-                throwOnError: false,
-                output: 'html'
+                delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false} ],
+                throwOnError: false, output: 'html'
             });
 
-            // Initialize specific simulation class
             const simContainer = document.getElementById('sim-container');
-            if (config.ClassRef === 'InfiniteWellSim') AppState.currentSim = new InfiniteWellSim(config, simContainer);
-            else if (config.ClassRef === 'IframeSim') AppState.currentSim = new IframeSim(config, simContainer);
-            else if (config.ClassRef === 'QuantumTunnelingSim') AppState.currentSim = new QuantumTunnelingSim(config, simContainer);
+            if (config.ClassRef === 'IframeSim') AppState.currentSim = new IframeSim(config, simContainer);
             else if (config.ClassRef === 'ElectricFieldSim') AppState.currentSim = new ElectricFieldSim(config, simContainer);
-            else if (config.ClassRef === 'MaxwellBoltzmannSim') AppState.currentSim = new MaxwellBoltzmannSim(config, simContainer);
             else if (config.ClassRef === 'HarmonicOscillatorSim') AppState.currentSim = new HarmonicOscillatorSim(config, simContainer);
             else if (config.ClassRef === 'EMWaveSim') AppState.currentSim = new EMWaveSim(config, simContainer);
 
-            if (AppState.currentSim) {
-                AppState.currentSim.init();
-            } else {
-                simContainer.innerHTML = '<div class="flex items-center justify-center h-full text-slate-500">Simulation engine failed to load.</div>';
-            }
+            if (AppState.currentSim) AppState.currentSim.init();
         }
 
-        // Global handlers for HTML inline events
         window.updateSimParam = function(id, value) {
-            if (AppState.currentSim) {
-                AppState.currentSim.updateParam(id, value);
-            }
+            if (AppState.currentSim) AppState.currentSim.updateParam(id, value);
         };
 
         window.switchSimTab = function(tabId) {
             document.getElementById('tab-explore').classList.remove('tab-active', 'text-slate-400');
             document.getElementById('tab-understand').classList.remove('tab-active', 'text-slate-400');
-            
             document.getElementById('panel-explore').classList.add('hidden');
             document.getElementById('panel-understand').classList.add('hidden');
             
@@ -1318,35 +832,28 @@
             }
         };
 
-        
-        // Background animation for Home page
         function initHeroCanvas() {
             const canvas = document.getElementById('hero-canvas');
             if(!canvas) return;
             const ctx = canvas.getContext('2d');
-            canvas.width = canvas.clientWidth;
-            canvas.height = canvas.clientHeight;
+            canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
 
             let particles = [];
             for(let i=0; i<50; i++) {
                 particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    vx: (Math.random() - 0.5) * 0.5,
-                    vy: (Math.random() - 0.5) * 0.5,
+                    x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
                     r: Math.random() * 2 + 1
                 });
             }
 
             function animate() {
-                if(window.location.hash !== '' && window.location.hash !== '#home') return; // Stop if not on home
+                if(window.location.hash !== '' && window.location.hash !== '#home') return; 
                 
-                // Ensure size is correct
                 if(canvas.width !== canvas.clientWidth) canvas.width = canvas.clientWidth;
                 if(canvas.height !== canvas.clientHeight) canvas.height = canvas.clientHeight;
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.strokeStyle = 'rgba(6, 182, 212, 0.15)'; // sci-accent
                 
                 for(let i=0; i<particles.length; i++) {
                     let p = particles[i];
@@ -1354,20 +861,15 @@
                     if(p.x < 0 || p.x > canvas.width) p.vx *= -1;
                     if(p.y < 0 || p.y > canvas.height) p.vy *= -1;
                     
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-                    ctx.fillStyle = 'rgba(6, 182, 212, 0.5)';
-                    ctx.fill();
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(6, 182, 212, 0.5)'; ctx.fill();
 
-                    // Connect close particles (Network effect)
                     for(let j=i+1; j<particles.length; j++) {
                         let p2 = particles[j];
                         let dist = Math.sqrt((p.x-p2.x)**2 + (p.y-p2.y)**2);
                         if(dist < 100) {
-                            ctx.beginPath();
-                            ctx.moveTo(p.x, p.y);
-                            ctx.lineTo(p2.x, p2.y);
-                            ctx.stroke();
+                            ctx.strokeStyle = 'rgba(6, 182, 212, 0.15)';
+                            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
                         }
                     }
                 }
@@ -1376,15 +878,10 @@
             animate();
         }
 
-        // Bootstrap App
         window.onload = () => {
-            // Check initial hash
             const hash = window.location.hash.substring(1);
-            if (hash) {
-                window.dispatchEvent(new Event('hashchange'));
-            } else {
-                navigate('home');
-            }
+            if (hash) window.dispatchEvent(new Event('hashchange'));
+            else navigate('home');
         };
     </script>
 </body>
