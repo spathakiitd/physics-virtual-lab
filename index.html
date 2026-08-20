@@ -307,6 +307,26 @@
                 equations: `$$ T \\approx e^{-2ka}, \\quad k = \\frac{\\sqrt{2m(V_0 - E)}}{\\hbar} $$`,
                 engine: 'iframe', url: './Quantum-tunnellingV2.html', ClassRef: 'IframeSim'
             },
+            
+            // --- NEW ENGINEERING PHYSICS LAB SIMULATIONS ---
+            'advanced-sonometer': {
+                id: 'advanced-sonometer', subjectId: 'engineering', category: 'Acoustics & Waves',
+                title: 'Advanced Sonometer Virtual Lab', difficulty: 'Intermediate',
+                description: 'Investigate the relationship between the resonant frequency of a stretched string, its tension, length, and linear mass density.',
+                objectives: ["Verify the laws of transverse vibrations on a string.", "Determine the frequency of a tuning fork or AC mains."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ f = \\frac{1}{2L} \\sqrt{\\frac{T}{\\mu}} $$`,
+                engine: 'iframe', url: './advanced_sonometer_virtual_laboratory.html', ClassRef: 'IframeSim'
+            },
+            'hall-effect': {
+                id: 'hall-effect', subjectId: 'engineering', category: 'Solid State Physics',
+                title: 'Hall Effect Virtual Lab', difficulty: 'Advanced',
+                description: 'Determine the Hall coefficient, charge carrier density, and mobility of charge carriers in a semiconductor specimen placed in a magnetic field.',
+                objectives: ["Measure Hall voltage as a function of magnetic field and current.", "Identify majority charge carrier type (n-type or p-type).", "Calculate carrier concentration."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ V_H = \\frac{I B_z}{n e d} $$ \\<br> $$ R_H = \\frac{1}{n e} $$`,
+                engine: 'iframe', url: './hall_effect_virtual_laboratory.html', ClassRef: 'IframeSim'
+            },
 
             // --- NATIVE DEMONSTRATION SIMULATIONS ---
             'e-field': {
