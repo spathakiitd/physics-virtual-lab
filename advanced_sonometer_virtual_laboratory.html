@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Sonometer Virtual Laboratory | B.Tech Engineering Physics</title>
+    <style>
+        /* ================================
+           CSS VARIABLES & THEME
+           ================================ */
+        :root {
+            --bg-main: #0b1121;
+            --bg-panel: #151e32;
+            --bg-glass: rgba(21, 30, 50, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-purple: #818cf8;
+            --accent-green: #34d399;
+            --accent-red: #f87171;
+            --font-main: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --font-mono: 'Consolas', 'Courier New', monospace;
+            --shadow-glow: 0 0 15px rgba(56, 189, 248, 0.3);
+            --transition: all 0.3s ease;
+        }
+
+        /* ================================
+           RESET & TYPOGRAPHY
+           ================================ */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow-x: hidden;
+            display: flex;
+            height: 100vh;
+        }
+        h1, h2, h3, h4 { color: var(--text-main); margin-bottom: 10px; font-weight: 600; }
+        p { line-height: 1.6; color: var(--text-muted); margin-bottom: 15px; }
+        a { color: var(--accent-blue); text-decoration: none; }
+        
+        /* Math Formatting */
+        .math { font-family: 'Times New Roman', Times, serif; font-style: italic; font-size: 1.1em; }
+        .math-block { 
+            background: rgba(0,0,0,0.3); padding: 15px; border-left: 3px solid var(--accent-purple);
+            margin: 15px 0; font-family: 'Times New Roman', Times, serif; font-size: 1.2em; text-align: center;
+        }
+        .frac { display: inline-block; vertical-align: middle; margin: 0 0.2em; text-align: center; font-size: 0.9em; }
+        .frac > span { display: block; padding: 0.1em; }
+        .frac .top { border-bottom: 1px solid var(--text-main); }
+        .sqrt { display: inline-block; vertical-align: middle; position: relative; padding-left: 10px;}
+        .sqrt::before { content: '√'; position: absolute; left: -2px; top: 50%; transform: translateY(-50%); font-size: 1.5em;}
+        .sqrt-content { border-top: 1px solid var(--text-main); padding-top: 2px; display: inline-block; }
+
+        /* ================================
+           LAYOUT COMPONENTS
+           ================================ */
+        .sidebar {
+            width: 280px; background: var(--bg-panel); border-right: 1px solid var(--border-glass);
+            display: flex; flex-direction: column; z-index: 100;
+        }
+        .logo-area { padding: 20px; border-bottom: 1px solid var(--border-glass); text-align: center; }
+        .logo-area h2 { color: var(--accent-blue); font-size: 1.2rem; margin: 0; text-transform: uppercase; letter-spacing: 1px;}
+        
+        .nav-links { flex: 1; overflow-y: auto; padding: 10px 0; }
+        .nav-item {
+            padding: 12px 25px; cursor: pointer; display: flex; align-items: center;
+            color: var(--text-muted); transition: var(--transition); font-weight: 500;
+        }
+        .nav-item:hover, .nav-item.active { background: rgba(56, 189, 248, 0.1); color: var(--accent-blue); border-right: 3px solid var(--accent-blue); }
+        
+        .main-content { flex: 1; position: relative; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
+        .tab-content { display: none; padding: 30px; animation: fadeIn 0.4s ease; max-width: 1400px; margin: 0 auto; }
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Glass Panels */
+        .panel {
+            background: var(--bg-glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-glass); border-radius: 12px; padding: 20px; margin-bottom: 20px;
+        }
+
+        /* Forms & Inputs */
+        .control-group { margin-bottom: 15px; }
+        .control-group label { display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.9em; }
+        .val-display { float: right; color: var(--accent-blue); font-family: var(--font-mono); }
+        input[type="range"] {
+            -webkit-appearance: none; width: 100%; background: transparent; margin: 10px 0;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: var(--accent-blue); cursor: pointer; margin-top: -5px; box-shadow: var(--shadow-glow);
+        }
+        select, input[type="number"], input[type="text"] {
+            width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass);
+            color: var(--text-main); border-radius: 6px; font-family: var(--font-main);
+        }
+        select:focus { outline: none; border-color: var(--accent-blue); }
+
+        button {
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb); color: white;
+            border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;
+            font-weight: 600; transition: var(--transition); text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px;
+        }
+        button:hover { box-shadow: var(--shadow-glow); transform: translateY(-1px); }
+        button.btn-outline { background: transparent; border: 1px solid var(--accent-blue); color: var(--accent-blue); }
+        button.btn-outline:hover { background: rgba(56, 189, 248, 0.1); }
+        button.btn-danger { background: linear-gradient(135deg, var(--accent-red), #dc2626); }
+
+        /* ================================
+           SPECIFIC SECTIONS
+           ================================ */
+        /* Home */
+        .hero { text-align: center; padding: 60px 20px; background: radial-gradient(circle at center, rgba(56,189,248,0.1) 0%, transparent 70%); }
+        .hero h1 { font-size: 2.5rem; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 2px; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
+        
+        /* Dashboard & Sim UI */
+        .sim-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+        .dashboard-bar {
+            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+            background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; border: 1px solid var(--border-glass); margin-bottom: 20px;
+        }
+        .dash-item { text-align: center; }
+        .dash-label { font-size: 0.75em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;}
+        .dash-val { font-size: 1.2em; font-weight: bold; color: var(--accent-green); font-family: var(--font-mono); }
+        
+        .canvas-container { position: relative; width: 100%; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-glass); }
+        canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+        
+        #resonance-meter-container { height: 20px; background: #222; border-radius: 10px; margin: 15px 0; position: relative; overflow: hidden;}
+        #resonance-meter-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #10b981, #ef4444); transition: width 0.1s linear;}
+        .meter-labels { display: flex; justify-content: space-between; font-size: 0.7em; color: var(--text-muted); padding: 0 5px;}
+
+        /* Tables & Data */
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; font-family: var(--font-mono); font-size: 0.9em; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid var(--border-glass); }
+        th { background: rgba(255,255,255,0.05); color: var(--accent-blue); }
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        /* Notification / Insight Toast */
+        #toast-container { position: fixed; bottom: 30px; right: 30px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: var(--bg-glass); border-left: 4px solid var(--accent-blue); padding: 15px 20px; border-radius: 4px; backdrop-filter: blur(10px); box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: slideIn 0.3s ease; max-width: 350px;}
+        .toast h4 { margin: 0 0 5px 0; font-size: 0.9em; color: var(--accent-blue); }
+        .toast p { margin: 0; font-size: 0.85em; color: #fff; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Print Styles */
+        @media print {
+            body { background: white; color: black; display: block; overflow: visible; height: auto;}
+            .sidebar, .toast, .no-print { display: none !important; }
+            .main-content { margin: 0; padding: 0; overflow: visible; }
+            .tab-content { display: none; padding: 0; box-shadow: none; border: none;}
+            #report-tab { display: block !important; }
+            .panel { background: none; border: 1px solid #ccc; page-break-inside: avoid; color: black; }
+            * { text-shadow: none !important; box-shadow: none !important; }
+            h1, h2, h3, h4, p, th, td { color: black !important; }
+            canvas { filter: invert(1); } /* Invert canvas for white background printing */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ================================
+         NAVIGATION SIDEBAR
+         ================================ -->
+    <nav class="sidebar no-print">
+        <div class="logo-area">
+            <h2>Sonometer Lab</h2>
+            <p style="font-size: 0.7em; margin-top: 5px; color: var(--accent-purple);">B.Tech Engineering Physics</p>
+        </div>
+        <div class="nav-links">
+            <div class="nav-item active" onclick="switchTab('home')">Home / Overview</div>
+            <div class="nav-item" onclick="switchTab('theory')">Theory & Math</div>
+            <div class="nav-item" onclick="switchTab('apparatus')">Apparatus Setup</div>
+            <div class="nav-item" onclick="switchTab('procedure')">Procedure</div>
+            <div class="nav-item" onclick="switchTab('simulator')">Interactive Simulator</div>
+            <div class="nav-item" onclick="switchTab('analysis')">Observations & Graphs</div>
+            <div class="nav-item" onclick="switchTab('demo')">Virtual Demonstration</div>
+            <div class="nav-item" onclick="switchTab('viva')">Viva / Self Eval</div>
+            <div class="nav-item" onclick="switchTab('resources')">Resources & Feedback</div>
+        </div>
+        <div style="padding: 20px;">
+            <button onclick="toggleAudio()" id="btn-audio" class="btn-outline" style="width: 100%;">🔈 Sound: OFF</button>
+            <button onclick="generateReport()" style="width: 100%; margin-top: 10px;">📄 Generate Report</button>
+        </div>
+    </nav>
+
+    <!-- ================================
+         MAIN CONTENT AREA
+         ================================ -->
+    <main class="main-content">
+        
+        <!-- 1. HOME TAB -->
+        <section id="home" class="tab-content active">
+            <div class="hero panel">
+                <h1>Experiment: The Sonometer</h1>
+                <p>Advanced Virtual Laboratory for determining the frequency of AC mains / Tuning Fork and investigating the laws of transverse vibrations in stretched strings.</p>
+                <div style="margin: 20px 0;">
+                    <span style="background: rgba(56, 189, 248, 0.2); padding: 5px 15px; border-radius: 20px; font-size: 0.85em; color: var(--accent-blue);">Difficulty: Advanced</span>
+                    <span style="background: rgba(129, 140, 248, 0.2); padding: 5px 15px; border-radius: 20px; font-size: 0.85em; color: var(--accent-purple); margin-left: 10px;">Time: ~45 Mins</span>
+                </div>
+                <button onclick="switchTab('simulator')" style="font-size: 1.1em; padding: 15px 30px;">Start Experiment</button>
+            </div>
+
+            <div class="cards-grid">
+                <div class="panel">
+                    <h3>🎯 Learning Objectives</h3>
+                    <ul style="list-style-position: inside; color: var(--text-muted); line-height: 1.8;">
+                        <li>Understand the working principle of a sonometer.</li>
+                        <li>Investigate the relationship between frequency, length, and tension.</li>
+                        <li>Determine the linear mass density of a wire.</li>
+                        <li>Determine the frequency of an AC supply using electromagnetism.</li>
+                        <li>Perform comprehensive error analysis.</li>
+                    </ul>
+                </div>
+                <div class="panel">
+                    <h3>⚙️ Core Phenomena</h3>
+                    <p><b>Resonance:</b> Occurs when the frequency of the external driving force exactly matches the natural vibrating frequency of the string system. Characterized by maximum amplitude.</p>
+                    <p><b>Standing Waves:</b> Formed by the superposition of two transverse progressive waves of equal amplitude and frequency traveling in opposite directions.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. THEORY TAB -->
+        <section id="theory" class="tab-content">
+            <div class="panel">
+                <h2>Theory & Mathematical Modeling</h2>
+                <p>A stretched string clamped at both ends can support transverse stationary waves. When the string is plucked or excited externally, waves travel along its length, reflect at the rigid boundaries (bridges), and interfere to produce standing wave patterns consisting of <b>nodes</b> (points of zero displacement) and <b>antinodes</b> (points of maximum displacement).</p>
+                
+                <h3>1. Fundamental Frequency</h3>
+                <p>For a string of length <span class="math">L</span>, tension <span class="math">T</span>, and mass per unit length (linear mass density) <span class="math">&mu;</span>, the fundamental frequency <span class="math">f</span> is given by:</p>
+                <div class="math-block">
+                    f = <span class="frac"><span class="top">1</span><span class="bottom">2L</span></span>
+                    <span class="sqrt"><span class="sqrt-content">
+                        <span class="frac"><span class="top">T</span><span class="bottom">&mu;</span></span>
+                    </span></span>
+                </div>
+
+                <h3>2. Linear Mass Density (&mu;)</h3>
+                <p>If the string is uniform with a circular cross-section of radius <span class="math">r</span> and is made of a material with density <span class="math">&rho;</span>, the linear mass density is:</p>
+                <div class="math-block">
+                    &mu; = <span class="frac"><span class="top">m</span><span class="bottom">l</span></span> = &pi; r<sup>2</sup> &rho;
+                </div>
+
+                <h3>3. Harmonics</h3>
+                <p>The string can vibrate in multiple segments (harmonics). The frequency of the <span class="math">n</span>-th harmonic is:</p>
+                <div class="math-block">
+                    f<sub>n</sub> = <span class="frac"><span class="top">n</span><span class="bottom">2L</span></span>
+                    <span class="sqrt"><span class="sqrt-content">
+                        <span class="frac"><span class="top">T</span><span class="bottom">&mu;</span></span>
+                    </span></span> = n f<sub>1</sub>
+                </div>
+
+                <h3>4. AC Sonometer Mode</h3>
+                <p>If a non-magnetic conducting wire carries alternating current of frequency <span class="math">f<sub>AC</sub></span> in a constant magnetic field (or if a magnetic wire is driven by an AC electromagnet), the driving force frequency is <span class="math">f<sub>drive</sub> = 2f<sub>AC</sub></span> (for electromagnet) or <span class="math">f<sub>AC</sub></span> (for AC carrying wire in uniform B-field). Resonance happens when <span class="math">f<sub>drive</sub> &approx; f<sub>n</sub></span>.</p>
+
+                <div class="panel" style="background: rgba(0,0,0,0.5); margin-top: 20px;">
+                    <h4>Dimensional Analysis Validation</h4>
+                    <p><span class="math">[T] = M L T<sup>-2</sup></span></p>
+                    <p><span class="math">[&mu;] = M L<sup>-1</sup></span></p>
+                    <p><span class="math">[T/&mu;] = (M L T<sup>-2</sup>) / (M L<sup>-1</sup>) = L<sup>2</sup> T<sup>-2</sup></span></p>
+                    <p><span class="math">&radic;(T/&mu;) = L T<sup>-1</sup> (Velocity)</span></p>
+                    <p><span class="math">[f] = [1/L] &times; [Velocity] = L<sup>-1</sup> &times; L T<sup>-1</sup> = T<sup>-1</sup> = Hertz (Hz)</span></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. APPARATUS & 4. PROCEDURE (Combined into one flow) -->
+        <section id="apparatus" class="tab-content">
+            <div class="panel">
+                <h2>Interactive Apparatus Overview</h2>
+                <div style="text-align: center; margin: 20px 0;">
+                    <svg width="600" height="250" viewBox="0 0 600 250" style="background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <!-- Sonometer Box -->
+                        <rect x="50" y="100" width="450" height="50" fill="#8B4513" stroke="#5C3A21" stroke-width="2"/>
+                        <circle cx="150" cy="125" r="15" fill="#3E2723"/>
+                        <circle cx="400" cy="125" r="15" fill="#3E2723"/>
+                        <!-- Pulley -->
+                        <circle cx="510" cy="100" r="12" fill="#7f8c8d" stroke="#2c3e50" stroke-width="2"/>
+                        <!-- Fixed Bridge -->
+                        <polygon points="60,100 70,80 80,100" fill="#bdc3c7"/>
+                        <!-- Movable Bridges -->
+                        <polygon points="200,100 210,80 220,100" fill="#f1c40f"/>
+                        <polygon points="350,100 360,80 370,100" fill="#f1c40f"/>
+                        <!-- Wire -->
+                        <polyline points="70,80 210,80 360,80 510,80 522,95 522,180" fill="none" stroke="#e0e0e0" stroke-width="2"/>
+                        <!-- Weights -->
+                        <rect x="507" y="180" width="30" height="40" fill="#e74c3c" rx="2"/>
+                        
+                        <!-- Labels -->
+                        <text x="270" y="140" fill="white" font-size="12">Hollow Wooden Box</text>
+                        <text x="280" y="70" fill="white" font-size="12">Stretched Wire</text>
+                        <text x="530" y="105" fill="white" font-size="12">Pulley</text>
+                        <text x="545" y="200" fill="white" font-size="12">Slotted Weights</text>
+                        <text x="180" y="115" fill="#f1c40f" font-size="12">Movable Bridges</text>
+                    </svg>
+                </div>
+                <h3>Standard Laboratory Procedure</h3>
+                <ol style="margin-left: 20px; line-height: 1.8; color: var(--text-muted);">
+                    <li>Place the sonometer on a stable, horizontal table. Ensure the pulley is completely frictionless.</li>
+                    <li>Stretch the wire over the bridges and pass it over the pulley. Suspend a suitable mass (e.g., 2 kg) from the hanger.</li>
+                    <li>Select a tuning fork of known frequency (e.g., 256 Hz) and strike it gently on a rubber pad.</li>
+                    <li>Place the vibrating tuning fork stem on the sonometer box to transfer vibrations to the string.</li>
+                    <li>Place a small, inverted V-shaped paper rider at the center of the string between the movable bridges A and B.</li>
+                    <li>Gradually change the distance between bridges A and B. Observe the paper rider.</li>
+                    <li>When the natural frequency of the string segment exactly matches the tuning fork frequency, <b>resonance</b> occurs. The string vibrates with maximum amplitude, throwing off the paper rider.</li>
+                    <li>Measure the length <span class="math">L</span> between the bridges using the attached meter scale.</li>
+                    <li>Repeat the process to find the mean resonant length. Change the mass/tension to perform Experiment B.</li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- 5. SIMULATOR TAB (The Core) -->
+        <section id="simulator" class="tab-content">
+            <div class="sim-layout">
+                <!-- Left Panel: Controls -->
+                <div class="panel" style="padding: 15px;">
+                    <h3 style="border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">Experiment Setup</h3>
+                    
+                    <div class="control-group" style="margin-top: 15px;">
+                        <label>Mode of Excitation</label>
+                        <select id="sim-mode" onchange="sim.changeMode()">
+                            <option value="tuning_fork">Tuning Fork (Mech.)</option>
+                            <option value="ac_mains">AC Electromagnet</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Wire Material <span class="val-display" id="val-density">7850 kg/m³</span></label>
+                        <select id="sim-material" onchange="sim.updateMaterial()">
+                            <option value="steel">Steel</option>
+                            <option value="copper">Copper</option>
+                            <option value="aluminium">Aluminium</option>
+                            <option value="brass">Brass</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Wire Diameter (mm) <span class="val-display" id="val-dia">0.50</span></label>
+                        <input type="range" id="sim-dia" min="0.2" max="1.5" step="0.05" value="0.5" oninput="sim.updateParams()">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Suspended Mass (kg) <span class="val-display" id="val-mass">2.0</span></label>
+                        <input type="range" id="sim-mass" min="0.5" max="10.0" step="0.1" value="2.0" oninput="sim.updateParams()">
+                    </div>
+
+                    <div class="control-group" id="ctrl-freq">
+                        <label>Source Frequency (Hz) <span class="val-display" id="val-freq">256</span></label>
+                        <input type="range" id="sim-freq" min="100" max="600" step="1" value="256" oninput="sim.updateParams()">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Harmonic Mode (n) <span class="val-display" id="val-harmonic">1</span></label>
+                        <input type="range" id="sim-harmonic" min="1" max="5" step="1" value="1" oninput="sim.updateParams()">
+                    </div>
+
+                    <div class="control-group" style="margin-top: 20px;">
+                        <label><input type="checkbox" id="sim-realistic" onchange="sim.toggleRealistic()"> Enable Realistic Uncertainty (±1%)</label>
+                    </div>
+
+                    <button onclick="sim.reset()" class="btn-danger" style="width: 100%; margin-top: 10px;">Reset Apparatus</button>
+                </div>
+
+                <!-- Right Panel: Vis & Dashboard -->
+                <div>
+                    <!-- Live Dashboard -->
+                    <div class="dashboard-bar">
+                        <div class="dash-item"><div class="dash-label">Length (L)</div><div class="dash-val" id="dash-L">0.000 m</div></div>
+                        <div class="dash-item"><div class="dash-label">Tension (T)</div><div class="dash-val" id="dash-T">0.00 N</div></div>
+                        <div class="dash-item"><div class="dash-label">Linear Density (µ)</div><div class="dash-val" id="dash-mu">0.00 g/m</div></div>
+                        <div class="dash-item"><div class="dash-label">Wave Speed (v)</div><div class="dash-val" id="dash-v">0.0 m/s</div></div>
+                        <div class="dash-item"><div class="dash-label">Natural Freq (f_n)</div><div class="dash-val" id="dash-fn">0.0 Hz</div></div>
+                    </div>
+
+                    <!-- Main Sonometer View -->
+                    <div class="canvas-container">
+                        <div style="position: absolute; top: 10px; left: 10px; font-size: 0.8em; color: rgba(255,255,255,0.5);">DRAG BRIDGES TO ADJUST VIBRATING LENGTH</div>
+                        <canvas id="sonometerCanvas" width="800" height="250"></canvas>
+                    </div>
+                    
+                    <!-- Resonance Meter -->
+                    <div style="margin-top: 20px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Resonance Status: <b id="res-status" style="color: var(--accent-red);">OFF</b></span>
+                            <span>Amplitude: <span id="val-amp" class="val-display">0.0%</span></span>
+                        </div>
+                        <div id="resonance-meter-container">
+                            <div id="resonance-meter-fill"></div>
+                        </div>
+                        <div class="meter-labels">
+                            <span>Weak</span>
+                            <span>Approaching</span>
+                            <span>RESONANCE</span>
+                            <span>Approaching</span>
+                            <span>Weak</span>
+                        </div>
+                    </div>
+
+                    <!-- Oscilloscope / Waveform view -->
+                    <div class="canvas-container" style="margin-top: 20px;">
+                        <div style="position: absolute; top: 10px; left: 10px; font-size: 0.8em; color: var(--accent-blue);">OSCILLOSCOPE: String Displacement vs Time</div>
+                        <canvas id="oscCanvas" width="800" height="150"></canvas>
+                    </div>
+
+                    <!-- Actions -->
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button onclick="sim.addReading()" style="flex: 1; background: var(--accent-green);">📥 Record Observation</button>
+                        <button onclick="sim.placeRider()" style="flex: 1; background: var(--accent-purple);">🔼 Replace Rider</button>
+                        <button onclick="sim.triggerExcitation()" id="btn-excite" style="flex: 1;">⚡ Excite String</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. OBSERVATIONS & ANALYSIS -->
+        <section id="analysis" class="tab-content">
+            <div class="panel">
+                <h2>Experimental Notebook & Analysis</h2>
+                <div style="margin-bottom: 20px;">
+                    <label>Active Experiment View:</label>
+                    <select id="exp-selector" onchange="dataSys.switchView()" style="width: auto; display: inline-block; margin-left: 10px;">
+                        <option value="A">Exp A: f vs 1/L (Constant T)</option>
+                        <option value="B">Exp B: L² vs T (Constant f)</option>
+                    </select>
+                </div>
+                
+                <div style="overflow-x: auto;">
+                    <table id="obs-table">
+                        <thead>
+                            <tr id="table-headers">
+                                <!-- Injected via JS -->
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button onclick="dataSys.clearData()" class="btn-danger">Clear Data</button>
+                    <button onclick="dataSys.plotGraph()" class="btn-outline">📈 Plot Graph</button>
+                </div>
+            </div>
+
+            <div class="panel" id="graph-panel" style="display: none;">
+                <h3>Graph & Regression Analysis</h3>
+                <div class="canvas-container" style="background: var(--bg-panel);">
+                    <canvas id="graphCanvas" width="800" height="400"></canvas>
+                </div>
+                <div id="regression-results" style="margin-top: 15px; font-family: var(--font-mono); color: var(--accent-green);"></div>
+            </div>
+        </section>
+
+        <!-- 7. DEMO / VIDEO -->
+        <section id="demo" class="tab-content">
+            <div class="panel" style="text-align: center;">
+                <h2>Virtual Demonstration</h2>
+                <p>Follow this animated sequence to understand how the real laboratory experiment is performed.</p>
+                <div style="width: 100%; height: 400px; background: #000; border-radius: 8px; border: 1px solid var(--border-glass); display: flex; align-items: center; justify-content: center; position: relative;">
+                    <canvas id="demoCanvas" width="800" height="400"></canvas>
+                    <div id="demo-overlay-text" style="position: absolute; bottom: 30px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; font-size: 1.2em; color: var(--accent-blue);">Click Play to Start</div>
+                </div>
+                <div style="margin-top: 20px; display: flex; justify-content: center; gap: 15px;">
+                    <button onclick="demoSys.play()" id="btn-demo-play">▶ Play Sequence</button>
+                    <button onclick="demoSys.pause()" id="btn-demo-pause" class="btn-outline">⏸ Pause</button>
+                    <button onclick="demoSys.reset()" class="btn-danger">⏹ Reset</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. VIVA -->
+        <section id="viva" class="tab-content">
+            <div class="panel" style="max-width: 800px; margin: 0 auto;">
+                <h2>Viva Voce & Self Evaluation</h2>
+                <div id="viva-setup">
+                    <p>Test your conceptual understanding of the Sonometer experiment. The quiz contains B.Tech level questions.</p>
+                    <button onclick="vivaSys.start()">Start Assessment</button>
+                </div>
+                
+                <div id="viva-active" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; color: var(--accent-blue);">
+                        <span id="viva-progress">Question 1 of 10</span>
+                        <span id="viva-score">Score: 0</span>
+                    </div>
+                    <h3 id="viva-q-text" style="margin-bottom: 20px;"></h3>
+                    <div id="viva-options" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Options injected here -->
+                    </div>
+                    <div id="viva-feedback" style="margin-top: 20px; padding: 15px; border-radius: 8px; display: none;"></div>
+                    <button id="viva-next-btn" onclick="vivaSys.next()" style="margin-top: 20px; display: none;">Next Question</button>
+                </div>
+
+                <div id="viva-result" style="display: none; text-align: center;">
+                    <h3>Assessment Complete!</h3>
+                    <h1 id="viva-final-score" style="color: var(--accent-green); font-size: 4em; margin: 20px 0;"></h1>
+                    <button onclick="vivaSys.reset()">Try Again</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 9. RESOURCES -->
+        <section id="resources" class="tab-content">
+            <div class="cards-grid">
+                <div class="panel">
+                    <h3>📚 Recommended References</h3>
+                    <ul style="color: var(--text-muted); line-height: 1.8;">
+                        <li><i>Practical Physics</i> - C.L. Arora</li>
+                        <li><i>Advanced Practical Physics for Students</i> - Worsnop & Flint</li>
+                        <li><i>Fundamentals of Physics</i> - Halliday, Resnick, Walker</li>
+                        <li>Standard Engineering Physics Laboratory Manuals.</li>
+                    </ul>
+                </div>
+                <div class="panel">
+                    <h3>⚠️ Practical Precautions</h3>
+                    <ul style="color: var(--text-muted); line-height: 1.8;">
+                        <li>Ensure the wire is uniform and free of kinks.</li>
+                        <li>The pulley must be frictionless. Lubricate if necessary in a real lab.</li>
+                        <li>Avoid adding excessive mass to prevent the wire from crossing its elastic limit.</li>
+                        <li>Place the paper rider exactly in the middle of the vibrating segment.</li>
+                        <li>Wait for the vibration to stabilize before declaring resonance.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>Submit Feedback</h3>
+                <div class="control-group">
+                    <label>Your Name/Roll Number</label>
+                    <input type="text" placeholder="e.g., John Doe - 22BPH001">
+                </div>
+                <div class="control-group">
+                    <label>Comments on Simulator Physics Accuracy</label>
+                    <input type="text" placeholder="Everything worked great!">
+                </div>
+                <button onclick="alert('Feedback saved locally in offline mode.')">Submit Feedback</button>
+            </div>
+        </section>
+
+        <!-- INVISIBLE REPORT CONTAINER (For Printing) -->
+        <div id="report-tab" class="print-only" style="display: none;">
+            <!-- Content injected dynamically before print -->
+        </div>
+
+    </main>
+
+    <!-- TOAST NOTIFICATIONS -->
+    <div id="toast-container" class="no-print"></div>
+
+    <!-- ================================
+         JAVASCRIPT LOGIC
+         ================================ -->
+    <script>
+        // ================================
+        // 0. GLOBALS & UTILS
+        // ================================
+        const g = 9.80665;
+        const materials = {
+            steel: { density: 7850, name: "Steel" },
+            copper: { density: 8960, name: "Copper" },
+            aluminium: { density: 2700, name: "Aluminium" },
+            brass: { density: 8730, name: "Brass" }
+        };
+
+        function showToast(title, message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<h4>${title}</h4><p>${message}</p>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            if(tabId === 'simulator') sim.resizeCanvas();
+            if(tabId === 'demo') demoSys.initCanvas();
+        }
+
+        // ================================
+        // 1. AUDIO ENGINE
+        // ================================
+        let audioCtx;
+        let oscillator;
+        let gainNode;
+        let audioEnabled = false;
+
+        function toggleAudio() {
+            if(!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if(audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            audioEnabled = !audioEnabled;
+            document.getElementById('btn-audio').innerText = audioEnabled ? "🔊 Sound: ON" : "🔈 Sound: OFF";
+            document.getElementById('btn-audio').style.color = audioEnabled ? "var(--accent-green)" : "";
+            
+            if(!audioEnabled && oscillator) {
+                oscillator.stop();
+                oscillator = null;
+            }
+        }
+
+        function updateAudio(freq, amplitude) {
+            if(!audioEnabled || !audioCtx) return;
+            if(!oscillator) {
+                oscillator = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.type = 'sine';
+                oscillator.start();
+            }
+            // Add harmonic overtone simulation simply by slightly distorting or just clean sine for simplicity
+            oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
+            // Cap volume
+            let vol = Math.min(amplitude / 100, 0.5); 
+            gainNode.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.1);
+        }
+
+        // ================================
+        // 2. PHYSICS ENGINE & SIM STATE
+        // ================================
+        const sim = {
+            state: {
+                mode: 'tuning_fork', // 'tuning_fork' or 'ac_mains'
+                material: 'steel',
+                dia_m: 0.5 * 1e-3,
+                mass_kg: 2.0,
+                drive_f: 256,
+                n: 1,
+                realistic: false,
+                bridgeA_x: 0.2, // relative [0 to 1] inside working area
+                bridgeB_x: 0.8,
+                
+                // Calculated
+                T: 0,
+                mu: 0,
+                L: 0,
+                fn: 0,
+                wave_v: 0,
+                
+                // Animation states
+                t: 0,
+                excitationActive: false,
+                excitationDecay: 0,
+                resonanceAmp: 0, // 0 to 100
+                riderStatus: 'on' // 'on', 'bouncing', 'off'
+            },
+            
+            canvas: null,
+            ctx: null,
+            oscCanvas: null,
+            oscCtx: null,
+            width: 800,
+            height: 250,
+            workingLengthMeters: 1.0, // 1 meter scale
+            
+            init() {
+                this.canvas = document.getElementById('sonometerCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.oscCanvas = document.getElementById('oscCanvas');
+                this.oscCtx = this.oscCanvas.getContext('2d');
+                
+                this.setupInteraction();
+                this.updateParams(true);
+                requestAnimationFrame(this.loop.bind(this));
+            },
+
+            resizeCanvas() {
+                // Ensure internal resolution is kept
+            },
+            
+            changeMode() {
+                this.state.mode = document.getElementById('sim-mode').value;
+                if(this.state.mode === 'ac_mains') {
+                    document.getElementById('ctrl-freq').innerHTML = `
+                        <label>AC Mains Freq (Hz) <span class="val-display" id="val-freq">50</span></label>
+                        <input type="range" id="sim-freq" min="40" max="100" step="1" value="50" oninput="sim.updateParams()">
+                    `;
+                    showToast("Mode Changed", "AC Electromagnet Mode: The string is driven at twice the AC frequency (f_drive = 2 * f_ac).");
+                } else {
+                    document.getElementById('ctrl-freq').innerHTML = `
+                        <label>Tuning Fork Freq (Hz) <span class="val-display" id="val-freq">256</span></label>
+                        <input type="range" id="sim-freq" min="100" max="600" step="1" value="256" oninput="sim.updateParams()">
+                    `;
+                    showToast("Mode Changed", "Tuning Fork Mode: The string is driven at exactly the tuning fork frequency.");
+                }
+                this.updateParams();
+            },
+            
+            updateMaterial() {
+                this.state.material = document.getElementById('sim-material').value;
+                document.getElementById('val-density').innerText = `${materials[this.state.material].density} kg/m³`;
+                showToast("Physics Insight", `Changed to ${materials[this.state.material].name}. Linear density changed, affecting wave speed and natural frequency.`);
+                this.updateParams();
+            },
+
+            toggleRealistic() {
+                this.state.realistic = document.getElementById('sim-realistic').checked;
+            },
+            
+            updateParams(initial = false) {
+                // Read UI
+                this.state.dia_m = parseFloat(document.getElementById('sim-dia').value) * 1e-3;
+                this.state.mass_kg = parseFloat(document.getElementById('sim-mass').value);
+                
+                let raw_freq = parseFloat(document.getElementById('sim-freq').value);
+                this.state.drive_f = this.state.mode === 'ac_mains' ? raw_freq * 2 : raw_freq;
+                
+                this.state.n = parseInt(document.getElementById('sim-harmonic').value);
+                
+                // Update UI displays
+                document.getElementById('val-dia').innerText = (this.state.dia_m * 1000).toFixed(2);
+                document.getElementById('val-mass').innerText = this.state.mass_kg.toFixed(1);
+                document.getElementById('val-freq').innerText = raw_freq;
+                document.getElementById('val-harmonic').innerText = this.state.n;
+                
+                // Calculations
+                let r = this.state.dia_m / 2;
+                let rho = materials[this.state.material].density;
+                this.state.mu = Math.PI * r * r * rho; // kg/m
+                this.state.T = this.state.mass_kg * g; // N
+                this.state.L = Math.abs(this.state.bridgeB_x - this.state.bridgeA_x) * this.workingLengthMeters;
+                
+                this.state.wave_v = Math.sqrt(this.state.T / this.state.mu);
+                this.state.fn = (this.state.n / (2 * this.state.L)) * this.state.wave_v;
+                
+                if(!isFinite(this.state.fn)) this.state.fn = 0;
+
+                // Resonance calculation (Lorentzian Model)
+                // Q factor approx 60 for string.
+                let Q = 60;
+                let gamma = this.state.fn / (2 * Q);
+                let num = 1;
+                // Avoid divide by zero if fn is 0
+                let denom = this.state.fn > 0 ? Math.sqrt(Math.pow(this.state.fn**2 - this.state.drive_f**2, 2) + Math.pow(2 * gamma * this.state.drive_f, 2)) : 100000;
+                
+                // Normalize max amplitude to 100
+                let maxDenom = 2 * gamma * this.state.fn;
+                let ampRatio = maxDenom / denom;
+                this.state.resonanceAmp = Math.min(ampRatio * 100, 100);
+
+                if(isNaN(this.state.resonanceAmp)) this.state.resonanceAmp = 0;
+
+                this.updateDashboard();
+                if(!initial && this.state.excitationActive) {
+                    this.checkRider();
+                }
+            },
+            
+            updateDashboard() {
+                // Convert to g/m for display
+                let mu_g_m = this.state.mu * 1000; 
+                document.getElementById('dash-L').innerText = this.state.L.toFixed(3) + " m";
+                document.getElementById('dash-T').innerText = this.state.T.toFixed(2) + " N";
+                document.getElementById('dash-mu').innerText = mu_g_m.toFixed(3) + " g/m";
+                document.getElementById('dash-v').innerText = this.state.wave_v.toFixed(1) + " m/s";
+                document.getElementById('dash-fn').innerText = this.state.fn.toFixed(1) + " Hz";
+                
+                // Meter Update
+                let fill = document.getElementById('resonance-meter-fill');
+                let status = document.getElementById('res-status');
+                let ampText = document.getElementById('val-amp');
+                
+                // Map delta f to position. Center is resonance.
+                let diff = this.state.drive_f - this.state.fn;
+                // If diff = 0, position 50%. Range: +/- 10Hz
+                let range = 20; 
+                let pos = 50 + (diff / range) * 50;
+                pos = Math.max(0, Math.min(100, pos));
+                
+                fill.style.width = '10px'; // just an indicator blob
+                fill.style.marginLeft = `calc(${pos}% - 5px)`;
+                
+                ampText.innerText = this.state.resonanceAmp.toFixed(1) + "%";
+
+                if(this.state.resonanceAmp > 80) {
+                    fill.style.background = '#10b981'; // Green
+                    status.innerText = "STRONG RESONANCE";
+                    status.style.color = "#10b981";
+                } else if(this.state.resonanceAmp > 30) {
+                    fill.style.background = '#f59e0b'; // Yellow
+                    status.innerText = "APPROACHING";
+                    status.style.color = "#f59e0b";
+                } else {
+                    fill.style.background = '#ef4444'; // Red
+                    status.innerText = "WEAK";
+                    status.style.color = "#ef4444";
+                }
+            },
+
+            triggerExcitation() {
+                this.state.excitationActive = true;
+                this.state.excitationDecay = 1.0;
+                this.checkRider();
+                showToast("System Excited", `String is being driven at ${this.state.drive_f} Hz.`);
+            },
+
+            placeRider() {
+                this.state.riderStatus = 'on';
+                showToast("Paper Rider", "Rider placed at the center of the string segment.");
+            },
+
+            checkRider() {
+                if(this.state.riderStatus === 'off') return;
+                
+                // Rider falls off if amplitude > 85% and it's near an antinode
+                if(this.state.resonanceAmp > 85) {
+                    this.state.riderStatus = 'off';
+                    showToast("Resonance!", "Amplitude maximum reached. Rider fell off.");
+                } else if(this.state.resonanceAmp > 40) {
+                    this.state.riderStatus = 'bouncing';
+                } else {
+                    this.state.riderStatus = 'on';
+                }
+            },
+
+            setupInteraction() {
+                let isDragging = null;
+                let scaleStart = 100; // x-coord of scale 0
+                let scaleLength = 600; // pixels for 1m
+                
+                this.canvas.addEventListener('mousedown', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) * (this.width / rect.width);
+                    const y = (e.clientY - rect.top) * (this.height / rect.height);
+                    
+                    let bx_A = scaleStart + this.state.bridgeA_x * scaleLength;
+                    let bx_B = scaleStart + this.state.bridgeB_x * scaleLength;
+                    
+                    // Bridge y is approx 130
+                    if(Math.abs(y - 130) < 30) {
+                        if(Math.abs(x - bx_A) < 20) isDragging = 'A';
+                        else if(Math.abs(x - bx_B) < 20) isDragging = 'B';
+                    }
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if(!isDragging) return;
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) * (this.width / rect.width);
+                    
+                    let relX = (x - scaleStart) / scaleLength;
+                    relX = Math.max(0, Math.min(1, relX)); // Clamp 0 to 1
+                    
+                    if(isDragging === 'A') {
+                        if(relX < this.state.bridgeB_x - 0.05) this.state.bridgeA_x = relX;
+                    } else if(isDragging === 'B') {
+                        if(relX > this.state.bridgeA_x + 0.05) this.state.bridgeB_x = relX;
+                    }
+                    this.updateParams();
+                });
+
+                window.addEventListener('mouseup', () => { isDragging = null; });
+            },
+
+            drawSonometer() {
+                const ctx = this.ctx;
+                ctx.clearRect(0, 0, this.width, this.height);
+                
+                let scaleStart = 100;
+                let scaleLength = 600;
+                let wireY = 110;
+                
+                // Box
+                ctx.fillStyle = '#2c1e16';
+                ctx.fillRect(80, 130, 640, 60);
+                // Scale
+                ctx.fillStyle = '#f1c40f';
+                ctx.fillRect(scaleStart, 180, scaleLength, 10);
+                // Scale ticks
+                ctx.fillStyle = '#000';
+                for(let i=0; i<=100; i+=10) {
+                    let tx = scaleStart + (i/100)*scaleLength;
+                    ctx.fillRect(tx, 180, 1, 5);
+                    if(i%20===0) {
+                        ctx.font = "10px monospace";
+                        ctx.fillText(i, tx-5, 198);
+                    }
+                }
+                
+                // Fixed bridges / supports at ends
+                ctx.fillStyle = '#7f8c8d';
+                ctx.beginPath(); ctx.moveTo(90, 130); ctx.lineTo(100, wireY); ctx.lineTo(110, 130); ctx.fill();
+                
+                // Pulley
+                ctx.beginPath(); ctx.arc(730, wireY, 15, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                
+                // Movable Bridges
+                let bx_A = scaleStart + this.state.bridgeA_x * scaleLength;
+                let bx_B = scaleStart + this.state.bridgeB_x * scaleLength;
+                ctx.fillStyle = '#e67e22';
+                ctx.beginPath(); ctx.moveTo(bx_A - 10, 130); ctx.lineTo(bx_A, wireY); ctx.lineTo(bx_A + 10, 130); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(bx_B - 10, 130); ctx.lineTo(bx_B, wireY); ctx.lineTo(bx_B + 10, 130); ctx.fill();
+                
+                // Weights
+                let weightY = 150;
+                ctx.fillStyle = '#bdc3c7';
+                ctx.fillRect(740, weightY, 10, 80); // Hanger
+                ctx.fillStyle = '#e74c3c';
+                let numWeights = Math.floor(this.state.mass_kg);
+                for(let i=0; i<numWeights; i++) {
+                    ctx.fillRect(725, weightY + 70 - i*15, 40, 12);
+                }
+
+                // Wire Rendering
+                ctx.strokeStyle = '#ecf0f1';
+                ctx.lineWidth = this.state.dia_m * 4000; // visual scaling
+                
+                // Segment 1: Fixed to A
+                ctx.beginPath(); ctx.moveTo(100, wireY); ctx.lineTo(bx_A, wireY); ctx.stroke();
+                
+                // Segment 2: Vibrating A to B
+                let ampPixels = 0;
+                if(this.state.excitationActive) {
+                    ampPixels = (this.state.resonanceAmp / 100) * 20 * this.state.excitationDecay;
+                }
+                
+                ctx.beginPath();
+                for(let px = bx_A; px <= bx_B; px+=2) {
+                    let x_rel = (px - bx_A) / (bx_B - bx_A); // 0 to 1
+                    // standing wave: sin(n * pi * x) * cos(omega * t)
+                    let y_offset = Math.sin(this.state.n * Math.PI * x_rel) * Math.cos(this.state.t * this.state.drive_f * 0.1) * ampPixels;
+                    ctx.lineTo(px, wireY - y_offset);
+                }
+                ctx.stroke();
+
+                // Segment 3: B to Pulley to weights
+                ctx.beginPath(); ctx.moveTo(bx_B, wireY); ctx.lineTo(730, wireY); ctx.lineTo(745, weightY); ctx.stroke();
+
+                // Draw Rider
+                if(this.state.riderStatus !== 'off') {
+                    let rx = (bx_A + bx_B) / 2;
+                    let ry = wireY - 5;
+                    if(this.state.riderStatus === 'bouncing') {
+                        ry -= Math.abs(Math.sin(this.state.t * 20)) * 10;
+                    }
+                    ctx.strokeStyle = '#f39c12';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(rx-5, ry+5); ctx.lineTo(rx, ry-5); ctx.lineTo(rx+5, ry+5); ctx.stroke();
+                } else {
+                    // draw it fallen on the box
+                    ctx.strokeStyle = '#f39c12';
+                    ctx.lineWidth = 2;
+                    let rx = (bx_A + bx_B) / 2;
+                    ctx.beginPath(); ctx.moveTo(rx-5, 135); ctx.lineTo(rx+5, 135); ctx.stroke();
+                }
+                
+                // Labels
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px sans-serif';
+                ctx.fillText("A", bx_A-4, 145);
+                ctx.fillText("B", bx_B-4, 145);
+            },
+
+            drawOscilloscope() {
+                const ctx = this.oscCtx;
+                ctx.clearRect(0, 0, 800, 150);
+                
+                // Grid
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+                ctx.lineWidth = 1;
+                for(let i=0; i<800; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,150); ctx.stroke(); }
+                for(let i=0; i<150; i+=25) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(800,i); ctx.stroke(); }
+                
+                // Center line
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+                ctx.beginPath(); ctx.moveTo(0, 75); ctx.lineTo(800, 75); ctx.stroke();
+
+                if(this.state.excitationActive) {
+                    ctx.strokeStyle = '#34d399';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    let amp = (this.state.resonanceAmp / 100) * 60 * this.state.excitationDecay;
+                    for(let x=0; x<800; x+=2) {
+                        // Plot wave history
+                        let t_hist = this.state.t - (800-x)*0.005;
+                        let y = 75 - amp * Math.cos(t_hist * this.state.drive_f * 0.1);
+                        ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                }
+            },
+
+            loop() {
+                this.state.t += 0.1;
+                if(this.state.excitationActive && this.state.mode === 'tuning_fork') {
+                    this.state.excitationDecay *= 0.995; // Damping
+                    if(this.state.excitationDecay < 0.01) this.state.excitationActive = false;
+                }
+                // AC mode is continuous drive
+                if(this.state.mode === 'ac_mains') {
+                    this.state.excitationDecay = 1.0; 
+                }
+
+                this.drawSonometer();
+                this.drawOscilloscope();
+                
+                updateAudio(this.state.drive_f, this.state.excitationActive ? this.state.resonanceAmp * this.state.excitationDecay : 0);
+                
+                requestAnimationFrame(this.loop.bind(this));
+            },
+
+            addReading() {
+                // Apply realistic uncertainty if checked
+                let noise = this.state.realistic ? (Math.random() - 0.5) * 0.02 : 0; // +/- 1%
+                
+                let L_meas = this.state.L * (1 + noise);
+                let data = {
+                    L: L_meas,
+                    T: this.state.T,
+                    f: this.state.drive_f,
+                    mu: this.state.mu,
+                    invL: 1 / L_meas,
+                    L2: L_meas * L_meas
+                };
+                dataSys.addDataPoint(data);
+            },
+
+            reset() {
+                document.getElementById('sim-dia').value = 0.5;
+                document.getElementById('sim-mass').value = 2.0;
+                document.getElementById('sim-freq').value = 256;
+                document.getElementById('sim-harmonic').value = 1;
+                this.state.bridgeA_x = 0.2;
+                this.state.bridgeB_x = 0.8;
+                this.state.excitationActive = false;
+                this.state.riderStatus = 'on';
+                this.updateParams(true);
+            }
+        };
+
+        // ================================
+        // 3. DATA & ANALYSIS SYSTEM
+        // ================================
+        const dataSys = {
+            data: [],
+            currentView: 'A', // 'A' or 'B'
+            
+            switchView() {
+                this.currentView = document.getElementById('exp-selector').value;
+                this.renderTable();
+                document.getElementById('graph-panel').style.display = 'none';
+            },
+
+            addDataPoint(pt) {
+                this.data.push(pt);
+                this.renderTable();
+                showToast("Data Recorded", `Observation ${this.data.length} saved successfully.`);
+            },
+
+            clearData() {
+                if(confirm("Are you sure you want to clear all recorded observations?")) {
+                    this.data = [];
+                    this.renderTable();
+                    document.getElementById('graph-panel').style.display = 'none';
+                }
+            },
+
+            renderTable() {
+                const head = document.getElementById('table-headers');
+                const body = document.getElementById('table-body');
+                
+                if(this.currentView === 'A') {
+                    head.innerHTML = `<th>Sl. No</th><th>Frequency (Hz)</th><th>Tension (N)</th><th>Length L (m)</th><th>1/L (m⁻¹)</th>`;
+                    body.innerHTML = this.data.map((d, i) => `
+                        <tr>
+                            <td>${i+1}</td>
+                            <td>${d.f.toFixed(1)}</td>
+                            <td>${d.T.toFixed(2)}</td>
+                            <td>${d.L.toFixed(4)}</td>
+                            <td>${d.invL.toFixed(4)}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    head.innerHTML = `<th>Sl. No</th><th>Frequency (Hz)</th><th>Tension T (N)</th><th>Length L (m)</th><th>L² (m²)</th>`;
+                    body.innerHTML = this.data.map((d, i) => `
+                        <tr>
+                            <td>${i+1}</td>
+                            <td>${d.f.toFixed(1)}</td>
+                            <td>${d.T.toFixed(2)}</td>
+                            <td>${d.L.toFixed(4)}</td>
+                            <td>${d.L2.toFixed(4)}</td>
+                        </tr>
+                    `).join('');
+                }
+            },
+
+            plotGraph() {
+                if(this.data.length < 2) {
+                    alert("Record at least 2 data points to plot a graph.");
+                    return;
+                }
+                
+                document.getElementById('graph-panel').style.display = 'block';
+                const canvas = document.getElementById('graphCanvas');
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                let xKey = this.currentView === 'A' ? 'invL' : 'T';
+                let yKey = this.currentView === 'A' ? 'f' : 'L2';
+                
+                let pts = this.data.map(d => ({ x: d[xKey], y: d[yKey] }));
+                
+                // Math Regression
+                let n = pts.length;
+                let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+                pts.forEach(p => { sumX += p.x; sumY += p.y; sumXY += p.x * p.y; sumX2 += p.x * p.x; });
+                let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+                let intercept = (sumY - slope * sumX) / n;
+                
+                // Drawing Math
+                let pad = 60;
+                let w = canvas.width - pad*2;
+                let h = canvas.height - pad*2;
+                
+                let minX = 0, maxX = Math.max(...pts.map(p=>p.x)) * 1.2;
+                let minY = 0, maxY = Math.max(...pts.map(p=>p.y)) * 1.2;
+                if(maxX === 0) maxX = 1; if(maxY === 0) maxY = 1;
+
+                function mapX(val) { return pad + (val / maxX) * w; }
+                function mapY(val) { return canvas.height - pad - (val / maxY) * h; }
+
+                // Axes
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, canvas.height - pad); ctx.lineTo(canvas.width - pad, canvas.height - pad); ctx.stroke();
+                
+                // Labels
+                ctx.fillStyle = '#38bdf8'; ctx.font = '14px sans-serif';
+                ctx.fillText(xKey === 'invL' ? "1/L (m⁻¹)" : "Tension T (N)", canvas.width / 2, canvas.height - 20);
+                ctx.save(); ctx.translate(20, canvas.height / 2); ctx.rotate(-Math.PI/2);
+                ctx.fillText(yKey === 'f' ? "Frequency (Hz)" : "L² (m²)", 0, 0); ctx.restore();
+
+                // Plot Points
+                ctx.fillStyle = '#f87171';
+                pts.forEach(p => {
+                    ctx.beginPath(); ctx.arc(mapX(p.x), mapY(p.y), 4, 0, Math.PI*2); ctx.fill();
+                });
+
+                // Plot Line
+                ctx.strokeStyle = '#34d399'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(mapX(0), mapY(intercept)); ctx.lineTo(mapX(maxX), mapY(slope * maxX + intercept)); ctx.stroke();
+
+                // Results Text
+                let eq = `y = ${slope.toFixed(4)}x ${intercept >= 0 ? '+' : '-'} ${Math.abs(intercept).toFixed(4)}`;
+                document.getElementById('regression-results').innerHTML = `
+                    Linear Regression: <b>${eq}</b><br>
+                    Slope (m): ${slope.toFixed(4)}<br>
+                    This verifies the linear relationship theoretically expected.
+                `;
+            }
+        };
+
+        // ================================
+        // 4. VIVA SYSTEM
+        // ================================
+        const vivaSys = {
+            questions: [
+                { q: "What is the primary function of a sonometer?", opts: ["To measure the diameter of a wire", "To study transverse vibrations of stretched strings", "To measure electrical resistance", "To verify Archimedes' principle"], ans: 1 },
+                { q: "In the fundamental mode of vibration, how many antinodes are formed in the vibrating string?", opts: ["Zero", "One", "Two", "Depends on length"], ans: 1 },
+                { q: "If the tension in a stretched string is made 4 times, its fundamental frequency becomes:", opts: ["Half", "Same", "Double", "Four times"], ans: 2 },
+                { q: "Which characteristic determines the linear mass density of the wire?", opts: ["Length and tension", "Material density and radius", "Frequency of source", "None of these"], ans: 1 },
+                { q: "What happens to the resonant length if a thicker wire of the same material and under the same tension is used?", opts: ["Increases", "Decreases", "Remains same", "Cannot be determined"], ans: 1 },
+                { q: "If the sonometer is used with an AC electromagnet, what is the relation between string frequency (f) and AC frequency (fac)?", opts: ["f = fac", "f = 2*fac", "f = fac/2", "No relation"], ans: 1 },
+                { q: "Why is a paper rider placed on the string?", opts: ["To add mass", "To damp the vibrations", "To visually indicate resonance", "To measure tension"], ans: 2 },
+                { q: "The relation between frequency (f) and vibrating length (L) for constant tension is:", opts: ["f ∝ L", "f ∝ L²", "f ∝ 1/L", "f ∝ 1/L²"], ans: 2 },
+                { q: "What is the SI unit of linear mass density (μ)?", opts: ["kg/m³", "kg/m", "g/cm", "kg m"], ans: 1 },
+                { q: "What type of waves are produced on the sonometer string?", opts: ["Longitudinal progressive", "Longitudinal stationary", "Transverse progressive", "Transverse stationary (standing)"], ans: 3 }
+            ],
+            idx: 0,
+            score: 0,
+            
+            start() {
+                document.getElementById('viva-setup').style.display = 'none';
+                document.getElementById('viva-active').style.display = 'block';
+                this.idx = 0;
+                this.score = 0;
+                this.loadQ();
+            },
+            
+            loadQ() {
+                let qData = this.questions[this.idx];
+                document.getElementById('viva-progress').innerText = `Question ${this.idx + 1} of ${this.questions.length}`;
+                document.getElementById('viva-score').innerText = `Score: ${this.score}`;
+                document.getElementById('viva-q-text').innerText = qData.q;
+                
+                let optsHTML = qData.opts.map((opt, i) => `
+                    <button class="btn-outline" onclick="vivaSys.check(${i})" style="text-align: left;">${opt}</button>
+                `).join('');
+                document.getElementById('viva-options').innerHTML = optsHTML;
+                document.getElementById('viva-feedback').style.display = 'none';
+                document.getElementById('viva-next-btn').style.display = 'none';
+            },
+
+            check(selected) {
+                let correct = this.questions[this.idx].ans;
+                let fb = document.getElementById('viva-feedback');
+                fb.style.display = 'block';
+                
+                // Disable options
+                let btns = document.getElementById('viva-options').querySelectorAll('button');
+                btns.forEach(b => b.onclick = null);
+
+                if(selected === correct) {
+                    this.score += 10;
+                    fb.innerHTML = "<b style='color: var(--accent-green)'>✅ Correct!</b>";
+                    btns[selected].style.background = 'rgba(52, 211, 153, 0.2)';
+                    btns[selected].style.borderColor = 'var(--accent-green)';
+                } else {
+                    fb.innerHTML = `<b style='color: var(--accent-red)'>❌ Incorrect.</b> The correct answer was: ${this.questions[this.idx].opts[correct]}`;
+                    btns[selected].style.background = 'rgba(248, 113, 113, 0.2)';
+                    btns[selected].style.borderColor = 'var(--accent-red)';
+                    btns[correct].style.borderColor = 'var(--accent-green)';
+                }
+                
+                document.getElementById('viva-score').innerText = `Score: ${this.score}`;
+                document.getElementById('viva-next-btn').style.display = 'block';
+            },
+
+            next() {
+                this.idx++;
+                if(this.idx < this.questions.length) {
+                    this.loadQ();
+                } else {
+                    document.getElementById('viva-active').style.display = 'none';
+                    document.getElementById('viva-result').style.display = 'block';
+                    document.getElementById('viva-final-score').innerText = `${this.score} / ${this.questions.length * 10}`;
+                }
+            },
+
+            reset() {
+                document.getElementById('viva-result').style.display = 'none';
+                this.start();
+            }
+        };
+
+        // ================================
+        // 5. DEMO ANIMATION SYSTEM
+        // ================================
+        const demoSys = {
+            canvas: null,
+            ctx: null,
+            frame: 0,
+            isPlaying: false,
+            
+            initCanvas() {
+                this.canvas = document.getElementById('demoCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                if(this.frame === 0) this.drawFrame(0);
+            },
+            
+            play() {
+                if(this.isPlaying) return;
+                this.isPlaying = true;
+                document.getElementById('demo-overlay-text').style.display = 'none';
+                this.loop();
+            },
+            
+            pause() {
+                this.isPlaying = false;
+            },
+            
+            reset() {
+                this.isPlaying = false;
+                this.frame = 0;
+                this.drawFrame(0);
+                document.getElementById('demo-overlay-text').style.display = 'block';
+            },
+            
+            loop() {
+                if(!this.isPlaying) return;
+                this.frame += 1;
+                this.drawFrame(this.frame);
+                if(this.frame < 600) { // 10 second animation approx
+                    requestAnimationFrame(this.loop.bind(this));
+                } else {
+                    this.isPlaying = false;
+                    document.getElementById('demo-overlay-text').innerText = "Demonstration Complete. Reset to replay.";
+                    document.getElementById('demo-overlay-text').style.display = 'block';
+                }
+            },
+            
+            drawFrame(f) {
+                if(!this.ctx) return;
+                const ctx = this.ctx;
+                ctx.clearRect(0,0,800,400);
+                
+                // Draw Base Sonometer
+                ctx.fillStyle = '#8B4513'; ctx.fillRect(100, 250, 500, 60);
+                ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.moveTo(120, 250); ctx.lineTo(130, 220); ctx.lineTo(140, 250); ctx.fill();
+                ctx.beginPath(); ctx.arc(620, 220, 15, 0, Math.PI*2); ctx.fill();
+                
+                // Animate Bridge B moving
+                let bxA = 200;
+                let bxB = 500;
+                let text = "Step 1: Setup Apparatus";
+                
+                if(f > 100 && f < 300) {
+                    text = "Step 2: Adjust vibrating length to find resonance.";
+                    bxB = 500 - (f-100)*0.5; // moving left
+                } else if (f >= 300) {
+                    bxB = 400; // found resonance point
+                }
+
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath(); ctx.moveTo(bxA-10, 250); ctx.lineTo(bxA, 220); ctx.lineTo(bxA+10, 250); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(bxB-10, 250); ctx.lineTo(bxB, 220); ctx.lineTo(bxB+10, 250); ctx.fill();
+
+                // Wire
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(130, 220); ctx.lineTo(bxA, 220); ctx.stroke();
+                
+                // Vibrating segment
+                ctx.beginPath();
+                for(let x=bxA; x<=bxB; x+=2) {
+                    let y = 220;
+                    if(f > 200) {
+                        let amp = (f > 280 && f < 320) ? 30 : 5; // Resonance at f=300
+                        y -= Math.sin(Math.PI*(x-bxA)/(bxB-bxA)) * Math.cos(f*0.5) * amp;
+                        if(f > 280 && f < 320) text = "Step 3: RESONANCE ACHIEVED! Amplitude is maximum.";
+                    }
+                    ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(bxB, 220); ctx.lineTo(620, 220); ctx.lineTo(635, 300); ctx.stroke();
+
+                // Weights
+                ctx.fillStyle = '#e74c3c'; ctx.fillRect(625, 300, 20, 40);
+
+                // Tuning fork animation
+                if(f > 150) {
+                    ctx.fillStyle = '#bdc3c7';
+                    let ty = 150 + Math.sin(f)*2;
+                    ctx.fillRect(350, ty, 5, 50); // stem
+                    ctx.beginPath(); ctx.arc(352, ty, 20, Math.PI, 0); ctx.stroke(); // U shape
+                }
+
+                // Text Overlay
+                ctx.fillStyle = '#38bdf8'; ctx.font = '20px sans-serif';
+                ctx.fillText(text, 50, 50);
+            }
+        };
+
+        // ================================
+        // 6. REPORT GENERATOR
+        // ================================
+        function generateReport() {
+            if(dataSys.data.length === 0) {
+                alert("Please collect some experimental data first before generating a report.");
+                return;
+            }
+
+            const container = document.getElementById('report-tab');
+            const date = new Date().toLocaleString();
+            
+            let tableHTML = document.getElementById('obs-table').outerHTML;
+            
+            container.innerHTML = `
+                <div style="padding: 40px; font-family: 'Times New Roman', serif; max-width: 800px; margin: 0 auto;">
+                    <h1 style="text-align: center; text-decoration: underline; color: black !important;">B.TECH LABORATORY REPORT</h1>
+                    <h2 style="text-align: center; margin-bottom: 30px; color: black !important;">Experiment: Sonometer</h2>
+                    
+                    <p><b>Date & Time:</b> ${date}</p>
+                    <p><b>Simulation Mode:</b> ${document.getElementById('sim-mode').options[document.getElementById('sim-mode').selectedIndex].text}</p>
+                    <p><b>Material Used:</b> ${materials[sim.state.material].name}</p>
+                    
+                    <h3>1. Objective</h3>
+                    <p>To determine the frequency of a tuning fork / AC mains and study the relation between frequency, length, and tension of a stretched string using a sonometer.</p>
+                    
+                    <h3>2. Formulae Used</h3>
+                    <p>Frequency: f = (1 / 2L) * √(T / µ)</p>
+                    <p>Linear Density: µ = π * r² * ρ</p>
+                    <p>Where L is resonant length, T is tension (Mg), r is radius, ρ is density.</p>
+                    
+                    <h3>3. Experimental Observations</h3>
+                    ${tableHTML}
+                    
+                    <h3>4. Viva Voce Result</h3>
+                    <p>Score: ${vivaSys.score} / ${vivaSys.questions.length * 10}</p>
+                    
+                    <br><br><br>
+                    <div style="display: flex; justify-content: space-between; margin-top: 50px;">
+                        <div>_________________________<br>Student Signature</div>
+                        <div>_________________________<br>Faculty Signature</div>
+                    </div>
+                </div>
+            `;
+            
+            window.print();
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            sim.init();
+        };
+
+    </script>
+</body>
+</html>
