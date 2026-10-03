@@ -307,6 +307,15 @@
                 equations: `$$ T \\approx e^{-2ka}, \\quad k = \\frac{\\sqrt{2m(V_0 - E)}}{\\hbar} $$`,
                 engine: 'iframe', url: './Quantum-tunnellingV2.html', ClassRef: 'IframeSim'
             },
+            'hydrogen-atom': {
+                id: 'hydrogen-atom', subjectId: 'quantum', category: 'Quantum Mechanics',
+                title: 'Hydrogen Atom 3D', difficulty: 'Advanced',
+                description: 'Interactive 3D visualization of hydrogen orbital probability densities and wave functions using WebGL.',
+                objectives: ["Understand quantum numbers (n, l, m).", "Visualize 3D nodal structures.", "Analyze radial probability distributions."],
+                params: [{ id: 'info', name: 'UI Controls', type: 'select', options: [{val: 1, label: 'Controls inside simulator'}], default: 1 }],
+                equations: `$$ E_n = -\\frac{13.6 \\text{ eV}}{n^2} $$\\<br>$$ \\psi_{nlm} = R_{nl}(r)Y_l^m(\\theta, \\phi) $$`,
+                engine: 'iframe', url: './hydrogen_atom_quantum_simulator.html', ClassRef: 'IframeSim'
+            },
             
             // --- NEW ENGINEERING PHYSICS LAB SIMULATIONS ---
             'advanced-sonometer': {
