@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrogen Atom Quantum Mechanics Simulator</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js for 3D Rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Plotly.js for Scientific Graphs -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    
+    <!-- MathJax for rendering equations -->
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1f2937; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        .modal-bg { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+        .slider-custom { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: #374151; border-radius: 4px; outline: none; }
+        .slider-custom::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #3b82f6; cursor: pointer; }
+        .active-tab { border-bottom: 2px solid #3b82f6; color: #60a5fa; }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-200 h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800 p-3 flex justify-between items-center shadow-lg z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shadow-[0_0_10px_rgba(37,99,235,0.8)]">H</div>
+            <h1 class="text-xl font-semibold text-white tracking-wide">Hydrogen Atom Quantum Simulator</h1>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-tutorial" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded text-sm font-medium transition-colors">Guided Learning</button>
+            <button id="btn-quiz" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-sm font-medium transition-colors">Self-Assessment</button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Panel: Quantum Controls -->
+        <div class="w-80 bg-gray-900 border-r border-gray-800 flex flex-col custom-scrollbar overflow-y-auto shrink-0">
+            <div class="p-4 border-b border-gray-800">
+                <h2 class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-4">Quantum State</h2>
+                
+                <!-- Principal Quantum Number (n) -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-end mb-1">
+                        <label class="text-sm font-medium text-gray-300">Principal ($n$)</label>
+                        <span id="val-n" class="text-lg font-bold text-blue-400">2</span>
+                    </div>
+                    <input type="range" id="slider-n" min="1" max="5" value="2" class="slider-custom">
+                    <div class="text-[10px] text-gray-500 mt-1 flex justify-between">
+                        <span>1 (Ground)</span><span>5</span>
+                    </div>
+                </div>
+
+                <!-- Azimuthal Quantum Number (l) -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-end mb-1">
+                        <label class="text-sm font-medium text-gray-300">Azimuthal ($l$)</label>
+                        <span id="val-l" class="text-lg font-bold text-green-400">1</span>
+                    </div>
+                    <input type="range" id="slider-l" min="0" max="1" value="1" class="slider-custom">
+                    <div class="text-[10px] text-gray-500 mt-1">Allowed: $0 \le l \le n-1$</div>
+                </div>
+
+                <!-- Magnetic Quantum Number (m) -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-end mb-1">
+                        <label class="text-sm font-medium text-gray-300">Magnetic ($m$)</label>
+                        <span id="val-m" class="text-lg font-bold text-purple-400">0</span>
+                    </div>
+                    <input type="range" id="slider-m" min="-1" max="1" value="0" class="slider-custom">
+                    <div class="text-[10px] text-gray-500 mt-1">Allowed: $-l \le m \le l$</div>
+                </div>
+
+                <!-- Presets -->
+                <div class="mt-4">
+                    <h3 class="text-xs text-gray-400 mb-2">Presets</h3>
+                    <div class="grid grid-cols-4 gap-2 text-xs">
+                        <button class="preset-btn bg-gray-800 hover:bg-gray-700 py-1 rounded" data-n="1" data-l="0" data-m="0">1s</button>
+                        <button class="preset-btn bg-gray-800 hover:bg-gray-700 py-1 rounded border border-gray-600" data-n="2" data-l="0" data-m="0">2s</button>
+                        <button class="preset-btn bg-gray-800 hover:bg-gray-700 py-1 rounded border border-gray-600" data-n="2" data-l="1" data-m="0">2p</button>
+                        <button class="preset-btn bg-gray-800 hover:bg-gray-700 py-1 rounded" data-n="3" data-l="0" data-m="0">3s</button>
+                        <button class="preset-btn bg-gray-800 hover:bg-gray-700 py-1 rounded" data-n="3" data-l="1" data-m="0">3p</button>
+                        <button class="preset-btn bg-gray-800 hover:bg-gray-700 py-1 rounded" data-n="3" data-l="2" data-m="0">3d</button>
+                        <button class="preset-btn bg-gray-800 hover:bg-gray-700 py-1 rounded" data-n="4" data-l="2" data-m="0">4d</button>
+                        <button class="preset-btn bg-gray-800 hover:bg-gray-700 py-1 rounded" data-n="4" data-l="3" data-m="0">4f</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-b border-gray-800">
+                <h2 class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-3">Nodes & Analysis</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between items-center bg-gray-800/50 p-2 rounded">
+                        <span class="text-gray-400 flex items-center gap-1">Total Nodes <button onclick="explain('nodes_total')" class="text-[10px] bg-gray-700 px-1 rounded hover:text-white">?</button></span>
+                        <span id="node-total" class="font-mono">1</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-gray-800/50 p-2 rounded">
+                        <span class="text-gray-400 flex items-center gap-1">Radial Nodes <button onclick="explain('nodes_radial')" class="text-[10px] bg-gray-700 px-1 rounded hover:text-white">?</button></span>
+                        <span id="node-radial" class="font-mono">0</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-gray-800/50 p-2 rounded">
+                        <span class="text-gray-400 flex items-center gap-1">Angular Nodes <button onclick="explain('nodes_angular')" class="text-[10px] bg-gray-700 px-1 rounded hover:text-white">?</button></span>
+                        <span id="node-angular" class="font-mono">1</span>
+                    </div>
+                </div>
+                
+                <div class="mt-4 bg-blue-900/20 border border-blue-800/50 p-3 rounded text-xs text-blue-200">
+                    <p id="state-description" class="mb-2">The 2p state has one angular node (a plane of zero probability) and no radial nodes.</p>
+                    <p class="font-mono mt-1 text-center bg-black/30 p-1 rounded">$\psi_{nlm} = R_{nl}(r)Y_l^m(\theta, \phi)$</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel: 3D Visualization -->
+        <div class="flex-1 flex flex-col relative bg-black">
+            <!-- 3D Canvas -->
+            <div id="canvas-container" class="flex-1 relative w-full h-full">
+                <!-- Loading overlay -->
+                <div id="loading-overlay" class="absolute inset-0 bg-black/80 z-20 flex flex-col items-center justify-center transition-opacity duration-300">
+                    <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <div class="text-blue-400 font-mono text-sm">Calculating Eigenfunctions...</div>
+                </div>
+                
+                <!-- Axis legend -->
+                <div class="absolute bottom-4 left-4 z-10 pointer-events-none opacity-70">
+                    <div class="flex items-center gap-2 text-xs font-mono"><span class="w-3 h-3 bg-red-500 rounded-sm"></span> X-axis</div>
+                    <div class="flex items-center gap-2 text-xs font-mono mt-1"><span class="w-3 h-3 bg-green-500 rounded-sm"></span> Y-axis</div>
+                    <div class="flex items-center gap-2 text-xs font-mono mt-1"><span class="w-3 h-3 bg-blue-500 rounded-sm"></span> Z-axis</div>
+                </div>
+                
+                <div class="absolute top-4 left-4 z-10 pointer-events-none">
+                    <div id="max-prob-label" class="bg-gray-900/80 backdrop-blur border border-gray-700 px-3 py-1.5 rounded text-xs font-mono text-gray-300">
+                        Max $P(r)$ at $r \approx 4.00 a_0$
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Mode Controls -->
+            <div class="h-16 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-4 px-4 z-10 shrink-0">
+                <span class="text-sm text-gray-400 font-medium">3D View Mode:</span>
+                <div class="flex bg-gray-950 p-1 rounded-lg border border-gray-800">
+                    <button id="mode-prob" class="px-4 py-1.5 rounded-md text-sm font-medium bg-gray-800 text-white shadow transition-all">Probability Density $|\psi|^2$</button>
+                    <button id="mode-wave" class="px-4 py-1.5 rounded-md text-sm font-medium text-gray-400 hover:text-white transition-all">Wave Function Phase $Re(\psi)$</button>
+                </div>
+                <div class="h-6 w-px bg-gray-700 mx-2"></div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-gray-400">Density</label>
+                    <input type="range" id="slider-density" min="10000" max="150000" value="60000" class="w-24 slider-custom h-1">
+                </div>
+                <button onclick="explain('born_rule')" class="ml-auto text-xs flex items-center gap-1 text-blue-400 hover:text-blue-300">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    What does this mean?
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Graphs and Information -->
+        <div class="w-96 bg-gray-900 border-l border-gray-800 flex flex-col shrink-0 custom-scrollbar overflow-y-auto">
+            
+            <!-- Energy Levels -->
+            <div class="p-4 border-b border-gray-800 bg-gray-950/50">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs uppercase tracking-wider text-gray-400 font-semibold">Energy Level</h2>
+                    <span id="energy-val" class="font-mono text-sm text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded border border-yellow-400/20">-3.40 eV</span>
+                </div>
+                <div class="relative h-24 mt-4 border-l border-gray-600 ml-4">
+                    <!-- Dynamic energy lines injected via JS -->
+                    <div id="energy-diagram" class="absolute inset-0"></div>
+                    <div class="absolute -bottom-6 -left-4 text-[10px] text-gray-500 font-mono">0 eV</div>
+                </div>
+                <div class="mt-8 text-center text-[10px] text-gray-500 font-mono">
+                    $E_n = -\frac{13.6 \text{ eV}}{n^2}$
+                </div>
+            </div>
+
+            <!-- Plotly Graphs -->
+            <div class="p-3 border-b border-gray-800 flex-1 min-h-[400px] flex flex-col gap-2">
+                
+                <!-- Graph Tabs -->
+                <div class="flex gap-4 border-b border-gray-700 pb-2 px-2">
+                    <button id="tab-R" class="text-xs font-semibold uppercase tracking-wide active-tab transition-colors">Radial Wave $R(r)$</button>
+                    <button id="tab-P" class="text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-300 transition-colors">Radial Prob $P(r)$</button>
+                </div>
+
+                <div class="flex-1 relative w-full h-full min-h-[180px]">
+                    <div id="plot-radial" class="absolute inset-0"></div>
+                </div>
+                
+                <div class="bg-gray-800/40 p-2 rounded text-[11px] text-gray-300 leading-relaxed" id="graph-description">
+                    $R_{nl}(r)$ describes the radial amplitude of the wave function. The roots of this function represent radial nodes where probability is zero.
+                </div>
+            </div>
+            
+            <!-- Mathematical Expectation Values -->
+            <div class="p-4">
+                <h2 class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-3">Observables</h2>
+                <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div class="bg-gray-800 p-2 rounded border border-gray-700/50">
+                        <div class="text-gray-500 mb-1">Total Ang. Mom.</div>
+                        <div class="text-gray-200">$\langle L^2 \rangle = l(l+1)\hbar^2$</div>
+                        <div id="val-L2" class="text-blue-300 mt-1">2 $\hbar^2$</div>
+                    </div>
+                    <div class="bg-gray-800 p-2 rounded border border-gray-700/50">
+                        <div class="text-gray-500 mb-1">Z-Projection</div>
+                        <div class="text-gray-200">$\langle L_z \rangle = m\hbar$</div>
+                        <div id="val-Lz" class="text-blue-300 mt-1">0 $\hbar$</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Explanation Modal -->
+    <div id="modal-explain" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-200">
+        <div class="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-lg w-full shadow-2xl transform scale-95 transition-transform duration-200" id="modal-content-box">
+            <div class="flex justify-between items-start mb-4">
+                <h3 id="modal-title" class="text-lg font-bold text-white">Concept</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div id="modal-body" class="text-gray-300 text-sm leading-relaxed space-y-3">
+                <!-- Content injected via JS -->
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm font-medium">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        
+        // --- Core Quantum Mechanics Math Library ---
+        // We use exact analytical functions to ensure scientific accuracy.
+
+        // Memoized factorial
+        const f_cache = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800];
+        function factorial(n) {
+            if (n < 0) return 1;
+            if (n < f_cache.length) return f_cache[n];
+            let res = f_cache[f_cache.length - 1];
+            for (let i = f_cache.length; i <= n; i++) {
+                res *= i;
+                f_cache[i] = res;
+            }
+            return res;
+        }
+
+        // Generalized Laguerre Polynomial L_{n}^{alpha}(x)
+        // Explicit sum formula: sum_{i=0}^n (-1)^i * (n+alpha choose n-i) * x^i / i!
+        function laguerreL(n, alpha, x) {
+            let sum = 0;
+            for (let i = 0; i <= n; i++) {
+                let num = Math.pow(-1, i) * factorial(n + alpha);
+                let den = factorial(n - i) * factorial(alpha + i) * factorial(i);
+                sum += (num / den) * Math.pow(x, i);
+            }
+            return sum;
+        }
+
+        // Radial Wave Function R_{nl}(r)
+        // Normalized with Bohr radius a_0 = 1
+        // R_{nl}(r) = sqrt( (2/n)^3 * (n-l-1)! / 2n[(n+l)!]^3 ) * e^{-r/n} * (2r/n)^l * L_{n-l-1}^{2l+1}(2r/n)
+        // NOTE: The normalization constant convention can vary depending on the definition of Associated Laguerre used.
+        // Using the standard physics convention (e.g. Griffiths) which matches the standard Laguerre definition above.
+        function R_nl(n, l, r) {
+            const rho = (2 * r) / n;
+            // Normalization constant N
+            const num = factorial(n - l - 1);
+            const den = 2 * n * Math.pow(factorial(n + l), 3);
+            const prefactor = Math.sqrt( Math.pow(2/n, 3) * (num / den) );
+            
+            const L = laguerreL(n - l - 1, 2 * l + 1, rho);
+            return prefactor * Math.exp(-rho / 2) * Math.pow(rho, l) * L;
+        }
+
+        // Associated Legendre Polynomials P_l^m(cos(theta))
+        // Hardcoded up to l=4 for maximum performance in the inner rendering loop
+        function P_lm(l, m, c, s) { // c = cos(theta), s = sin(theta)
+            const absM = Math.abs(m);
+            if (l === 0) return 1;
+            if (l === 1) {
+                if (absM === 0) return c;
+                if (absM === 1) return s; // Phase (-1)^m handled in Y_lm
+            }
+            if (l === 2) {
+                if (absM === 0) return 0.5 * (3*c*c - 1);
+                if (absM === 1) return 3 * c * s;
+                if (absM === 2) return 3 * s*s;
+            }
+            if (l === 3) {
+                if (absM === 0) return 0.5 * (5*c*c*c - 3*c);
+                if (absM === 1) return 1.5 * s * (5*c*c - 1);
+                if (absM === 2) return 15 * s*s * c;
+                if (absM === 3) return 15 * s*s*s;
+            }
+            if (l === 4) {
+                if (absM === 0) return 0.125 * (35*c*c*c*c - 30*c*c + 3);
+                if (absM === 1) return 2.5 * s * (7*c*c*c - 3*c);
+                if (absM === 2) return 7.5 * s*s * (7*c*c - 1);
+                if (absM === 3) return 105 * s*s*s * c;
+                if (absM === 4) return 105 * s*s*s*s;
+            }
+            return 0;
+        }
+
+        // Spherical Harmonics Normalization
+        function Y_lm_norm(l, m) {
+            return Math.sqrt( ((2*l + 1) / (4 * Math.PI)) * (factorial(l - Math.abs(m)) / factorial(l + Math.abs(m))) );
+        }
+
+        // Magnitude squared of Spherical Harmonic |Y_l^m|^2
+        // Independent of phi for stationary states
+        function Y_lm_mag_sq(l, m, theta) {
+            const c = Math.cos(theta);
+            const s = Math.sin(theta);
+            const P = P_lm(l, m, c, s);
+            const N = Y_lm_norm(l, m);
+            return N * N * P * P;
+        }
+
+        // Real representation for visualizing "lobes" and phase (Wave Function mode)
+        // Combines +m and -m to form real standing waves (e.g., p_x, p_y)
+        function Y_lm_real(l, m, theta, phi) {
+            const c = Math.cos(theta);
+            const s = Math.sin(theta);
+            const P = P_lm(l, m, c, s);
+            const N = Y_lm_norm(l, m);
+            
+            // Condon-Shortley phase for positive m
+            const CS = (Math.abs(m) % 2 !== 0) ? -1 : 1;
+            
+            if (m === 0) {
+                return N * P;
+            } else if (m > 0) {
+                return Math.SQRT2 * CS * N * P * Math.cos(m * phi);
+            } else {
+                return Math.SQRT2 * CS * N * P * Math.sin(Math.abs(m) * phi);
+            }
+        }
+
+        
+        // Application State
+        const state = {
+            n: 2,
+            l: 1,
+            m: 0,
+            viewMode: 'prob', // 'prob' or 'wave'
+            graphMode: 'R',   // 'R' (Wave) or 'P' (Prob)
+            density: 60000,
+            isCalculating: false
+        };
+
+        // DOM Elements
+        const els = {
+            sliderN: document.getElementById('slider-n'),
+            sliderL: document.getElementById('slider-l'),
+            sliderM: document.getElementById('slider-m'),
+            valN: document.getElementById('val-n'),
+            valL: document.getElementById('val-l'),
+            valM: document.getElementById('val-m'),
+            presetBtns: document.querySelectorAll('.preset-btn'),
+            modeProb: document.getElementById('mode-prob'),
+            modeWave: document.getElementById('mode-wave'),
+            tabR: document.getElementById('tab-R'),
+            tabP: document.getElementById('tab-P'),
+            sliderDensity: document.getElementById('slider-density'),
+            loadingOverlay: document.getElementById('loading-overlay')
+        };
+
+        
+        // Three.js Setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        
+        // Camera setup
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(20, 15, 30);
+        
+        // Renderer setup
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for performance
+        container.appendChild(renderer.domElement);
+        
+        // Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.0;
+
+        // Visual Helpers (Axes)
+        const axesHelper = new THREE.AxesHelper(10);
+        // Make axes materials slightly transparent
+        axesHelper.material.transparent = true;
+        axesHelper.material.opacity = 0.5;
+        scene.add(axesHelper);
+
+        // Particle System variables
+        let particleSystem = null;
+        
+        // Create soft circle texture for particles
+        const createParticleTexture = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.4, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 32, 32);
+            return new THREE.CanvasTexture(canvas);
+        };
+        const particleTexture = createParticleTexture();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            Plotly.Plots.resize(document.getElementById('plot-radial'));
+        });
+
+        
+        // Generate Probability Cloud using Monte Carlo Rejection Sampling
+        // Wrapped in setTimeout to prevent UI blocking during heavy calculation
+        function update3DVisualization() {
+            if (state.isCalculating) return;
+            state.isCalculating = true;
+            els.loadingOverlay.style.opacity = '1';
+            els.loadingOverlay.style.visibility = 'visible';
+
+            setTimeout(() => {
+                const n = state.n;
+                const l = state.l;
+                const m = state.m;
+                const N_POINTS = state.density;
+                
+                // Heuristic for bounding volume: r_max roughly scales with n^2
+                // We want to capture ~99% of probability
+                const R_MAX = 2.5 * n * n + 6; 
+                
+                // 1. Find approximate maximum probability for rejection threshold
+                let max_prob = 0;
+                for(let i=0; i<3000; i++) {
+                    const r = Math.random() * R_MAX;
+                    const theta = Math.acos(2 * Math.random() - 1);
+                    const R_val = R_nl(n, l, r);
+                    const ang_sq = Y_lm_mag_sq(l, m, theta);
+                    const prob = R_val * R_val * ang_sq;
+                    if(prob > max_prob) max_prob = prob;
+                }
+                max_prob *= 1.1; // Safety margin
+
+                const positions = new Float32Array(N_POINTS * 3);
+                const colors = new Float32Array(N_POINTS * 3);
+                const sizes = new Float32Array(N_POINTS);
+                
+                let pointsAdded = 0;
+                let attempts = 0;
+                const MAX_ATTEMPTS = N_POINTS * 100; // Prevent infinite loops
+                
+                // Color configuration
+                const colorProb = new THREE.Color(0x00d2ff); // Cyan for probability
+                const colorWavePos = new THREE.Color(0xff3b30); // Red for positive phase
+                const colorWaveNeg = new THREE.Color(0x007aff); // Blue for negative phase
+
+                while(pointsAdded < N_POINTS && attempts < MAX_ATTEMPTS) {
+                    attempts++;
+                    
+                    // Uniform volume sampling in spherical coordinates
+                    const r = Math.cbrt(Math.random()) * R_MAX;
+                    const theta = Math.acos(2 * Math.random() - 1);
+                    const phi = Math.random() * 2 * Math.PI;
+
+                    const R_val = R_nl(n, l, r);
+                    
+                    // The physical probability density for a stationary state is independent of phi
+                    // P(r, theta, phi) = |R(r)|^2 * |Y(theta, phi)|^2
+                    const prob = (R_val * R_val) * Y_lm_mag_sq(l, m, theta);
+
+                    // Rejection test
+                    if (Math.random() * max_prob < prob) {
+                        const idx = pointsAdded * 3;
+                        
+                        // Convert to Cartesian
+                        positions[idx] = r * Math.sin(theta) * Math.cos(phi);
+                        positions[idx+1] = r * Math.cos(theta); // Y is up in Three.js, corresponds to Z in physics standard
+                        positions[idx+2] = r * Math.sin(theta) * Math.sin(phi);
+
+                        sizes[pointsAdded] = (Math.random() * 0.5 + 0.5) * (n * 0.15 + 0.3); // Scale point size slightly with n
+
+                        if (state.viewMode === 'prob') {
+                            // Brightness based on local density vs max
+                            const intensity = 0.5 + 0.5 * (prob / max_prob);
+                            colors[idx] = colorProb.r * intensity;
+                            colors[idx+1] = colorProb.g * intensity;
+                            colors[idx+2] = colorProb.b * intensity;
+                        } else {
+                            // Wave function mode: show real part (phase)
+                            // This visualizes the classic orbital lobes (px, py, etc.)
+                            const phase = R_val * Y_lm_real(l, m, theta, phi);
+                            
+                            if (phase > 0) {
+                                colors[idx] = colorWavePos.r;
+                                colors[idx+1] = colorWavePos.g;
+                                colors[idx+2] = colorWavePos.b;
+                            } else {
+                                colors[idx] = colorWaveNeg.r;
+                                colors[idx+1] = colorWaveNeg.g;
+                                colors[idx+2] = colorWaveNeg.b;
+                            }
+                        }
+                        pointsAdded++;
+                    }
+                }
+
+                // Create or update geometry
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions.slice(0, pointsAdded * 3), 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors.slice(0, pointsAdded * 3), 3));
+                // Note: Point size per vertex is tricky without custom shaders, using uniform size in material for simplicity and performance.
+                
+                const material = new THREE.PointsMaterial({
+                    size: n > 3 ? 0.35 : 0.25, // Adjust global size based on orbital extent
+                    map: particleTexture,
+                    transparent: true,
+                    opacity: state.viewMode === 'prob' ? 0.6 : 0.8,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending,
+                    vertexColors: true
+                });
+
+                if (particleSystem) scene.remove(particleSystem);
+                particleSystem = new THREE.Points(geometry, material);
+                scene.add(particleSystem);
+
+                // Adjust camera based on n to keep orbital in view
+                const camDistance = Math.max(15, n * n * 2.5 + 5);
+                camera.position.setLength(camDistance);
+                axesHelper.scale.set(camDistance/3, camDistance/3, camDistance/3);
+
+                // Clean up loading state
+                els.loadingOverlay.style.opacity = '0';
+                setTimeout(() => { els.loadingOverlay.style.visibility = 'hidden'; }, 300);
+                state.isCalculating = false;
+
+            }, 10); // Small delay to allow UI to render loading screen
+        }
+
+        
+        // Render 2D Radial Graphs
+        function updateGraphs() {
+            const n = state.n;
+            const l = state.l;
+            
+            const r_max = 2 * n * n + 10;
+            const steps = 300;
+            const r_arr = [];
+            const R_arr = [];
+            const P_arr = [];
+            let max_P = 0;
+            let r_max_prob = 0;
+
+            for(let i=0; i<=steps; i++) {
+                const r = (i / steps) * r_max;
+                r_arr.push(r);
+                
+                const R_val = R_nl(n, l, r);
+                R_arr.push(R_val);
+                
+                // Radial probability density P(r) = r^2 * |R(r)|^2
+                const P_val = r * r * R_val * R_val;
+                P_arr.push(P_val);
+
+                if(P_val > max_P) {
+                    max_P = P_val;
+                    r_max_prob = r;
+                }
+            }
+
+            document.getElementById('max-prob-label').innerHTML = `Max $P(r)$ at $r \\approx ${r_max_prob.toFixed(2)} a_0$`;
+
+            const trace = {
+                x: r_arr,
+                y: state.graphMode === 'R' ? R_arr : P_arr,
+                mode: 'lines',
+                line: {
+                    color: state.graphMode === 'R' ? '#a78bfa' : '#34d399',
+                    width: 3
+                },
+                fill: state.graphMode === 'P' ? 'tozeroy' : 'none',
+                fillcolor: 'rgba(52, 211, 153, 0.2)'
+            };
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { t: 10, r: 10, b: 40, l: 40 },
+                xaxis: { 
+                    title: 'Radial Distance (r/a₀)', 
+                    color: '#9ca3af',
+                    gridcolor: '#374151',
+                    zerolinecolor: '#4b5563'
+                },
+                yaxis: { 
+                    title: state.graphMode === 'R' ? 'R(r)' : 'P(r) = r²|R(r)|²', 
+                    color: '#9ca3af',
+                    gridcolor: '#374151',
+                    zerolinecolor: '#4b5563'
+                },
+                showlegend: false
+            };
+
+            Plotly.react('plot-radial', [trace], layout, {displayModeBar: false, responsive: true});
+            
+            // Re-typeset MathJax in the newly updated label
+            if (window.MathJax) MathJax.typesetPromise([document.getElementById('max-prob-label')]);
+        }
+
+
+        // Update all textual UI elements
+        function updateUI() {
+            els.valN.textContent = state.n;
+            els.valL.textContent = state.l;
+            els.valM.textContent = state.m;
+            
+            // Validate & constrain sliders
+            els.sliderL.max = state.n - 1;
+            if (state.l > state.n - 1) {
+                state.l = state.n - 1;
+                els.sliderL.value = state.l;
+                els.valL.textContent = state.l;
+            }
+            
+            els.sliderM.min = -state.l;
+            els.sliderM.max = state.l;
+            if (state.m < -state.l || state.m > state.l) {
+                state.m = 0; // Reset to 0 is usually safer when out of bounds
+                els.sliderM.value = state.m;
+                els.valM.textContent = state.m;
+            }
+
+            // Update Nodes
+            const nTotal = state.n - 1;
+            const nRadial = state.n - state.l - 1;
+            const nAngular = state.l;
+            
+            document.getElementById('node-total').textContent = nTotal;
+            document.getElementById('node-radial').textContent = nRadial;
+            document.getElementById('node-angular').textContent = nAngular;
+
+            // Energy Level
+            const energy = -13.6 / (state.n * state.n);
+            document.getElementById('energy-val').textContent = energy.toFixed(2) + " eV";
+            
+            // Draw energy diagram
+            const diagram = document.getElementById('energy-diagram');
+            diagram.innerHTML = '';
+            for(let i=1; i<=5; i++) {
+                const E = -13.6 / (i*i);
+                // Map [-13.6, 0] to [100%, 0%] height (0 is at top)
+                const percent = (E / -13.6) * 100; 
+                
+                const line = document.createElement('div');
+                line.className = `absolute left-0 right-0 h-px ${i === state.n ? 'bg-yellow-400 z-10' : 'bg-gray-700'}`;
+                line.style.top = `${percent}%`;
+                
+                const label = document.createElement('div');
+                label.className = `absolute right-2 text-[9px] -mt-1.5 ${i === state.n ? 'text-yellow-400 font-bold' : 'text-gray-500'}`;
+                label.style.top = `${percent}%`;
+                label.textContent = `n=${i}`;
+                
+                diagram.appendChild(line);
+                diagram.appendChild(label);
+            }
+
+            // Update Observables
+            document.getElementById('val-L2').innerHTML = `${state.l * (state.l + 1)} $\\hbar^2$`;
+            document.getElementById('val-Lz').innerHTML = `${state.m} $\\hbar$`;
+
+            // State Description
+            const lLetters = ['s', 'p', 'd', 'f', 'g'];
+            const orbitalName = `${state.n}${lLetters[state.l]}`;
+            
+            let desc = `The <strong>${orbitalName}</strong> state `;
+            if (state.l === 0) desc += `is spherically symmetric (no angular nodes).`;
+            else desc += `has ${nAngular} angular node(s), giving it a characteristic multi-lobed shape.`;
+            desc += ` It possesses ${nRadial} radial node(s) where probability falls to zero.`;
+            
+            document.getElementById('state-description').innerHTML = desc;
+
+            // Update Preset Buttons Highlighting
+            els.presetBtns.forEach(btn => {
+                if(parseInt(btn.dataset.n) === state.n && parseInt(btn.dataset.l) === state.l && parseInt(btn.dataset.m) === state.m) {
+                    btn.classList.add('bg-blue-600', 'border-blue-400');
+                    btn.classList.remove('bg-gray-800', 'border-gray-600');
+                } else {
+                    btn.classList.remove('bg-blue-600', 'border-blue-400');
+                    btn.classList.add('bg-gray-800');
+                }
+            });
+
+            // Re-render MathJax
+            if (window.MathJax) {
+                MathJax.typesetPromise([
+                    document.getElementById('val-L2'),
+                    document.getElementById('val-Lz')
+                ]);
+            }
+        }
+
+        // Master update function
+        function applyStateChange() {
+            updateUI();
+            updateGraphs();
+            update3DVisualization();
+        }
+
+
+        // Sliders
+        els.sliderN.addEventListener('input', (e) => { state.n = parseInt(e.target.value); applyStateChange(); });
+        els.sliderL.addEventListener('input', (e) => { state.l = parseInt(e.target.value); applyStateChange(); });
+        els.sliderM.addEventListener('input', (e) => { state.m = parseInt(e.target.value); applyStateChange(); });
+        els.sliderDensity.addEventListener('input', (e) => { 
+            state.density = parseInt(e.target.value); 
+            update3DVisualization(); // Only need to update 3D
+        });
+
+        // Mode Toggles
+        els.modeProb.addEventListener('click', () => {
+            state.viewMode = 'prob';
+            els.modeProb.classList.add('bg-gray-800', 'text-white', 'shadow');
+            els.modeProb.classList.remove('text-gray-400');
+            els.modeWave.classList.remove('bg-gray-800', 'text-white', 'shadow');
+            els.modeWave.classList.add('text-gray-400');
+            update3DVisualization();
+        });
+
+        els.modeWave.addEventListener('click', () => {
+            state.viewMode = 'wave';
+            els.modeWave.classList.add('bg-gray-800', 'text-white', 'shadow');
+            els.modeWave.classList.remove('text-gray-400');
+            els.modeProb.classList.remove('bg-gray-800', 'text-white', 'shadow');
+            els.modeProb.classList.add('text-gray-400');
+            update3DVisualization();
+        });
+
+        // Graph Tabs
+        els.tabR.addEventListener('click', () => {
+            state.graphMode = 'R';
+            els.tabR.classList.add('active-tab');
+            els.tabR.classList.remove('text-gray-500');
+            els.tabP.classList.remove('active-tab');
+            els.tabP.classList.add('text-gray-500');
+            document.getElementById('graph-description').innerHTML = "$R_{nl}(r)$ describes the radial amplitude of the wave function. The roots of this function represent radial nodes where probability is zero.";
+            updateGraphs();
+            if(window.MathJax) MathJax.typesetPromise([document.getElementById('graph-description')]);
+        });
+
+        els.tabP.addEventListener('click', () => {
+            state.graphMode = 'P';
+            els.tabP.classList.add('active-tab');
+            els.tabP.classList.remove('text-gray-500');
+            els.tabR.classList.remove('active-tab');
+            els.tabR.classList.add('text-gray-500');
+            document.getElementById('graph-description').innerHTML = "$P(r) = r^2|R_{nl}(r)|^2$ represents the probability of finding the electron in a spherical shell of thickness $dr$ at radius $r$. Note the $r^2$ volume factor.";
+            updateGraphs();
+            if(window.MathJax) MathJax.typesetPromise([document.getElementById('graph-description')]);
+        });
+
+        // Presets
+        els.presetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                state.n = parseInt(btn.dataset.n);
+                state.l = parseInt(btn.dataset.l);
+                state.m = parseInt(btn.dataset.m);
+                els.sliderN.value = state.n;
+                els.sliderL.value = state.l;
+                els.sliderM.value = state.m;
+                applyStateChange();
+            });
+        });
+
+        
+        const explanations = {
+            born_rule: {
+                title: "The Born Interpretation",
+                body: `In quantum mechanics, electrons do not follow fixed classical orbits. Instead, their state is described by a wave function $\\psi$.<br><br>
+                       According to Max Born, the physically measurable quantity is the <strong>probability density</strong>, given by $|\\psi|^2$.<br><br>
+                       In the <strong>Probability Density</strong> view, brightness represents the likelihood of finding the electron at that point in space. In the <strong>Wave Function Phase</strong> view, we show the real part of $\\psi$, revealing the positive (red) and negative (blue) phases of the standing wave, which are crucial for chemical bonding.`
+            },
+            nodes_total: {
+                title: "Total Nodes",
+                body: `A node is a region where the probability of finding an electron is exactly zero.<br><br>
+                       The total number of nodes in a hydrogen orbital is determined entirely by the principal quantum number $n$:<br>
+                       $$N_{total} = n - 1$$<br>
+                       As energy ($n$) increases, the wave function must oscillate more, resulting in more nodes.`
+            },
+            nodes_radial: {
+                title: "Radial Nodes",
+                body: `Radial nodes are spherical shells (at specific distances $r$ from the nucleus) where the probability density is zero.<br><br>
+                       They are calculated as:<br>
+                       $$N_{radial} = n - l - 1$$<br>
+                       You can see these clearly as points where the graph of $R(r)$ crosses the zero axis.`
+            },
+            nodes_angular: {
+                title: "Angular Nodes",
+                body: `Angular nodes are planes or conical surfaces (depending on angle) where the probability density is zero.<br><br>
+                       They are determined exactly by the azimuthal quantum number:<br>
+                       $$N_{angular} = l$$<br>
+                       For example, $p$-orbitals ($l=1$) have one planar node, separating the two lobes.`
+            }
+        };
+
+        function explain(key) {
+            const data = explanations[key];
+            if(!data) return;
+            
+            document.getElementById('modal-title').innerHTML = data.title;
+            document.getElementById('modal-body').innerHTML = data.body;
+            
+            const modal = document.getElementById('modal-explain');
+            const box = document.getElementById('modal-content-box');
+            
+            modal.classList.remove('hidden');
+            // Trigger reflow
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            box.classList.remove('scale-95');
+            
+            if (window.MathJax) MathJax.typesetPromise([document.getElementById('modal-body')]);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal-explain');
+            const box = document.getElementById('modal-content-box');
+            
+            modal.classList.add('opacity-0');
+            box.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        // Render Loop for Three.js
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Initial Boot
+        window.onload = function() {
+            applyStateChange();
+            animate();
+        };
+
+    </script>
+</body>
+</html>
