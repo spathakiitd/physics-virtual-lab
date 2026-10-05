@@ -134,13 +134,15 @@
     <nav class="sticky top-0 z-50 glass-panel border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <div class="flex items-center cursor-pointer" onclick="navigate('home')">
+                <div class="flex items-center cursor-pointer" onclick="window.location.hash='#home'">
                     <i data-lucide="atom" class="text-sci-accent w-8 h-8 mr-2"></i>
                     <span class="font-bold text-xl tracking-tight text-white">SPIns<span class="text-sci-accent">Lab</span></span>
                 </div>
                 <div class="hidden md:block">
                     <div class="ml-10 flex items-baseline space-x-4">
-                        <button onclick="navigate('home')" class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Home</button>
+                        <button onclick="window.open('https://spathakiitd.github.io/SachinPathak/', '_blank')" class="hover:text-white px-3 py-2 rounded-md text-sm font-medium flex items-center transition-colors">
+                            <i data-lucide="external-link" class="w-4 h-4 mr-1"></i> Dr. Sachin Pathak
+                        </button>
                         <div class="relative group">
                             <button class="hover:text-white px-3 py-2 rounded-md text-sm font-medium flex items-center transition-colors">
                                 Modules <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i>
@@ -155,7 +157,7 @@
                                 <a href="#subject/fun-ai" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Fun Activities with AI</a>
                             </div>
                         </div>
-                        <button onclick="navigate('about')" class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">About</button>
+                        <button onclick="window.location.hash='#about'" class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">About & NEP 2020</button>
                     </div>
                 </div>
                 <div class="flex items-center">
@@ -632,16 +634,18 @@
             if (view === 'home') renderHome(content);
             else if (view === 'subject') renderSubject(content, data);
             else if (view === 'simulation') renderSimulation(content, data);
+            else if (view === 'about') renderAbout(content);
             else renderHome(content); 
             lucide.createIcons(); window.scrollTo(0, 0);
         }
 
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.substring(1);
-            if (!hash) { navigate('home'); return; }
+            if (!hash || hash === 'home') { navigate('home'); return; }
             const parts = hash.split('/');
             if (parts[0] === 'subject' && parts[1]) navigate('subject', parts[1]);
             else if (parts[0] === 'sim' && parts[1]) navigate('simulation', parts[1].replace(/%20/g, ' '));
+            else if (parts[0] === 'about') navigate('about');
             else navigate('home');
         });
 
@@ -864,6 +868,65 @@
                 document.getElementById('panel-understand').classList.remove('hidden');
             }
         };
+
+        function renderAbout(container) {
+            container.innerHTML = `
+                <div class="py-16 px-6 max-w-4xl mx-auto w-full text-slate-300">
+                    <button onclick="window.location.hash='#home'" class="text-sm text-slate-400 hover:text-white mb-8 flex items-center transition-colors">
+                        <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i> Back to Dashboard
+                    </button>
+                    
+                    <div class="flex items-center mb-10 border-b border-slate-800 pb-6">
+                        <i data-lucide="book-open-check" class="w-10 h-10 mr-4 text-sci-accent"></i>
+                        <h1 class="text-4xl font-bold text-white tracking-tight">About SPInsLab</h1>
+                    </div>
+                    
+                    <div class="glass-panel p-8 rounded-xl mb-8 relative overflow-hidden shadow-2xl shadow-black/50">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-sci-accent opacity-[0.03] rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                        <h2 class="text-2xl font-bold text-white mb-6 flex items-center text-sci-accent">
+                            <i data-lucide="lightbulb" class="w-6 h-6 mr-3"></i> 
+                            Technology in Teaching: Alignment with NEP 2020
+                        </h2>
+                        
+                        <div class="space-y-7 text-sm leading-relaxed text-slate-300">
+                            <p class="text-base text-slate-200">The <strong>National Education Policy (NEP) 2020</strong> places profound emphasis on the integration of technology to revolutionize teaching, learning, and assessment processes. SPInsLab (Virtual Research Environment) has been systematically engineered in strict alignment with these forward-looking directives to ensure equitable access to high-quality, conceptual education.</p>
+                            
+                            <div>
+                                <h3 class="text-lg font-semibold text-white mb-2 flex items-center"><i data-lucide="monitor-play" class="w-4 h-4 mr-2 text-cyan-400"></i> 1. Virtual Laboratories for Equitable Access</h3>
+                                <p class="pl-6">NEP 2020 explicitly mandates the creation of Virtual Labs so that all students have equal access to high-quality practical and hands-on experiments. SPInsLab bridges the critical gap for institutions that may lack expensive physical infrastructure by providing rigorous, mathematically accurate, and interactive physics simulations accessible directly from a standard web browser.</p>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-lg font-semibold text-white mb-2 flex items-center"><i data-lucide="layers" class="w-4 h-4 mr-2 text-cyan-400"></i> 2. Blended and Immersive Learning</h3>
+                                <p class="pl-6">The policy strongly advocates for a blended model of learning. By transitioning abstract quantum mechanics, thermodynamics, and electromagnetic theories into highly interactive, manipulable visual experiences, this platform supports flipped classrooms and experiential learning. It allows students to "play" with physical constants and immediately observe dynamic outcomes.</p>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-lg font-semibold text-white mb-2 flex items-center"><i data-lucide="brain-circuit" class="w-4 h-4 mr-2 text-cyan-400"></i> 3. Shifting to Conceptual Understanding</h3>
+                                <p class="pl-6">NEP pushes for a paradigm shift away from rote memorization towards deep, multidisciplinary conceptual understanding. Our modular architecture links theoretical mathematical models (rendered via KaTeX/MathJax) directly to real-time graphical outputs, ensuring students intuitively grasp the <em>"why"</em> and <em>"how"</em> behind complex physical phenomena.</p>
+                            </div>
+
+                            <div>
+                                <h3 class="text-lg font-semibold text-white mb-2 flex items-center"><i data-lucide="globe-2" class="w-4 h-4 mr-2 text-cyan-400"></i> 4. Digital Infrastructure & Open Repositories</h3>
+                                <p class="pl-6">Built on modern, serverless web technologies (HTML5, Canvas, WebGL, ES6) and designed to be deployed seamlessly on open-access platforms like GitHub Pages, SPInsLab contributes actively to the creation of accessible public digital infrastructure for the broader academic and student community.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-xl border border-slate-700/50">
+                        <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+                            <i data-lucide="cpu" class="w-5 h-5 mr-2 text-slate-400"></i> Technical Architecture
+                        </h2>
+                        <p class="text-sm leading-relaxed mb-4 text-slate-300">
+                            SPInsLab operates as a production-grade, highly optimized Single Page Application (SPA). It utilizes a dual-engine architecture: Native client-side simulations rendering at 60FPS using Canvas/WebGL, alongside a secure Iframe Engine for embedding external, specialized HTML5 interactive modules seamlessly.
+                        </p>
+                        <p class="text-sm leading-relaxed text-slate-400 italic">
+                            Designed explicitly for undergraduate, postgraduate, and research-level physics curricula.
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
 
         function initHeroCanvas() {
             const canvas = document.getElementById('hero-canvas');
